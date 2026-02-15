@@ -92,7 +92,8 @@ Since testnet faucets can be unreliable, we recommend running the **Hardhat Loca
 
 1.  **Connect Wallet:** Click "Connect Wallet" (requires Xverse).
 2.  **Choose Role:** Select **Supplier** to issue invoices or **Buyer** to pay them.
-3.  **Create Invoice:** (As Supplier) Fill in details -> Click "Create Invoice" -> **Sign with MetaMask**.
+3.  **Create Invoice:** (As Supplier) Fill in details -> Click "Create Invoice".
+    *   *Watch for the new Premium Transaction Overlay while waiting for confirmation!* 💎
 4.  **Pay Invoice:** (As Buyer) Click "Pay" -> **Confirm Transaction in MetaMask**.
 5.  **Verify:** See the status change to **Paid** instantly!
 
