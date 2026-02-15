@@ -57,6 +57,33 @@
   animation: shrink 8s linear forwards;
 }
 
+@keyframes slide-in-bottom-right {
+  from { opacity: 0; transform: translate(100%, 20px); }
+  to { opacity: 1; transform: translate(0, 0); }
+}
+
+.slide-in-bottom-right {
+  animation: slide-in-bottom-right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.notification-enter {
+  opacity: 0;
+  transform: translateX(100%);
+}
+.notification-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 300ms, transform 300ms;
+}
+.notification-exit {
+  opacity: 1;
+}
+.notification-exit-active {
+  opacity: 0;
+  transform: translateX(100%);
+  transition: opacity 300ms, transform 300ms;
+}
+
 /* Selection */
 ::selection {
   background: rgba(245, 158, 11, 0.3);

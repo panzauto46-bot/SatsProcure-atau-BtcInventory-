@@ -8,48 +8,39 @@ export function RoleSelector() {
 
   if (!wallet.connected) {
     return (
-      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4">
-        <div className="w-full max-w-2xl text-center">
+      <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center p-4">
+        <div className="w-full max-w-4xl text-center space-y-16">
           {/* Hero Section */}
-          <div className="mb-12">
-            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-2xl shadow-orange-500/30">
+          <div className="space-y-6">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-xl shadow-orange-500/20 ring-1 ring-white/10">
               <Bitcoin className="h-10 w-10 text-white" />
             </div>
-            <h1 className="mb-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">
+            <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-6xl md:text-7xl">
               {t('heroTitle1')}
-              <br />
-              <span className="bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
+              <span className="block mt-1 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500 bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient">
                 {t('heroTitle2')}
               </span>
             </h1>
-            <p className="mx-auto max-w-lg text-lg text-gray-400 leading-relaxed">
+            <p className="mx-auto max-w-2xl text-lg text-gray-400 leading-relaxed md:text-xl">
               {t('heroDesc')}
             </p>
           </div>
 
           {/* Features */}
-          <div className="mb-12 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
             {[
-              { icon: Shield, title: t('featureSecure'), desc: t('featureSecureDesc') },
-              { icon: Zap, title: t('featureInstant'), desc: t('featureInstantDesc') },
-              { icon: Globe, title: t('featureTransparent'), desc: t('featureTransparentDesc') },
-            ].map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
-                <Icon className="mx-auto mb-3 h-6 w-6 text-amber-400" />
-                <h3 className="mb-1 text-sm font-semibold text-white">{title}</h3>
-                <p className="text-xs text-gray-500">{desc}</p>
+              { icon: Shield, title: t('featureSecure'), desc: t('featureSecureDesc'), color: 'text-emerald-400' },
+              { icon: Zap, title: t('featureInstant'), desc: t('featureInstantDesc'), color: 'text-amber-400' },
+              { icon: Globe, title: t('featureTransparent'), desc: t('featureTransparentDesc'), color: 'text-blue-400' },
+            ].map(({ icon: Icon, title, desc, color }) => (
+              <div key={title} className="group relative rounded-2xl border border-white/5 bg-white/5 p-6 backdrop-blur-sm transition-all hover:bg-white/10 hover:-translate-y-1">
+                <div className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-white/5 ${color} ring-1 ring-white/10 transition-transform group-hover:scale-110`}>
+                  <Icon className="h-6 w-6" />
+                </div>
+                <h3 className="mb-2 text-lg font-semibold text-white">{title}</h3>
+                <p className="text-sm text-gray-400 leading-relaxed">{desc}</p>
               </div>
             ))}
-          </div>
-
-          {/* CTA */}
-          <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-orange-500/5 p-8">
-            <p className="mb-2 text-sm font-medium text-amber-400">{t('getStarted')}</p>
-            <p className="text-gray-400 text-sm">
-              {t('getStartedDesc')}{' '}
-              <span className="font-semibold text-amber-400">{t('getStartedBtn')}</span>{' '}
-              {t('getStartedSuffix')}
-            </p>
           </div>
         </div>
       </div>
@@ -57,11 +48,11 @@ export function RoleSelector() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4">
-      <div className="w-full max-w-2xl">
-        <div className="mb-10 text-center">
-          <h2 className="mb-3 text-3xl font-bold text-white">{t('chooseRole')}</h2>
-          <p className="text-gray-400">{t('chooseRoleDesc')}</p>
+    <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center px-4">
+      <div className="w-full max-w-4xl">
+        <div className="mb-12 text-center space-y-4">
+          <h2 className="text-3xl font-bold text-white sm:text-4xl">{t('chooseRole')}</h2>
+          <p className="text-gray-400 text-lg">{t('chooseRoleDesc')}</p>
         </div>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           {/* Supplier Card */}

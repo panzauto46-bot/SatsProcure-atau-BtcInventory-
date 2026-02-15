@@ -22,12 +22,18 @@ function AppContent() {
 
       <Navbar />
 
-      <main>
-        {!wallet.connected || !role ? (
-          <RoleSelector />
-        ) : (
-          <Dashboard />
-        )}
+      <main className="relative z-10">
+        <div className="mx-auto max-w-7xl px-4 pt-24 pb-12 sm:px-6 lg:px-8">
+          {!wallet.connected || !role ? (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
+              <RoleSelector />
+            </div>
+          ) : (
+            <div className="animate-in fade-in zoom-in-95 duration-500 ease-out">
+              <Dashboard />
+            </div>
+          )}
+        </div>
       </main>
 
       <Notifications />
