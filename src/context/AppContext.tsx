@@ -2,6 +2,13 @@ import { createContext, useContext, useState, useCallback, type ReactNode } from
 import { v4 as uuidv4 } from 'uuid';
 import type { Invoice, WalletState, Notification, UserRole, InvoiceItem } from '@/types';
 import { useLanguage } from '@/i18n/LanguageContext';
+import {
+  isXverseInstalled,
+  connectXverse,
+  getXverseBalance,
+  sendXverseTransfer,
+  disconnectXverse,
+} from '@/lib/xverse';
 
 interface AppContextType {
   wallet: WalletState;
@@ -108,14 +115,18 @@ const DEMO_INVOICES: Invoice[] = [
   },
 ];
 
+const INITIAL_WALLET: WalletState = {
+  connected: false,
+  address: '',
+  publicKey: '',
+  balance: 0,
+  network: 'Midl Testnet',
+  mode: 'demo',
+};
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const { t } = useLanguage();
-  const [wallet, setWallet] = useState<WalletState>({
-    connected: false,
-    address: '',
-    balance: 0,
-    network: 'Midl Testnet',
-  });
+  const [wallet, setWallet] = useState<WalletState>(INITIAL_WALLET);
   const [role, setRole] = useState<UserRole>(null);
   const [invoices, setInvoices] = useState<Invoice[]>(DEMO_INVOICES);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -137,17 +148,79 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setNotifications(prev => prev.filter(x => x.id !== id));
   }, []);
 
+  // ============================================================
+  // Connect Wallet (dual-mode: real Xverse or demo)
+  // ============================================================
   const connectWallet = useCallback(async () => {
     setIsProcessing(true);
+
+    if (isXverseInstalled()) {
+      // === REAL XVERSE WALLET ===
+      try {
+        const result = await connectXverse();
+
+        let balanceSats = 0;
+        try {
+          const bal = await getXverseBalance();
+          balanceSats = bal.total;
+        } catch {
+          // Balance fetch can fail on testnet - use 0
+        }
+
+        setWallet({
+          connected: true,
+          address: result.paymentAddress,
+          publicKey: result.paymentPublicKey,
+          balance: balanceSats,
+          network: result.network || 'Testnet',
+          mode: 'real',
+        });
+        setIsProcessing(false);
+        addNotification({
+          type: 'success',
+          title: t('walletConnected'),
+          message: `${t('walletConnectedMsg')} ${result.paymentAddress.slice(0, 10)}...${result.paymentAddress.slice(-6)}`,
+        });
+        return;
+      } catch (err: unknown) {
+        setIsProcessing(false);
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        if (message === 'USER_REJECTED') {
+          addNotification({
+            type: 'warning',
+            title: t('connectionCancelled'),
+            message: t('connectionCancelledMsg'),
+          });
+          return;
+        }
+        addNotification({
+          type: 'error',
+          title: t('connectionError'),
+          message: message || t('connectionErrorMsg'),
+        });
+        return;
+      }
+    }
+
+    // === DEMO MODE (Xverse not installed) ===
+    addNotification({
+      type: 'info',
+      title: t('demoMode'),
+      message: t('demoModeMsg'),
+    });
+
     await new Promise(r => setTimeout(r, 1500));
     const address = 'bc1q' + Array.from({ length: 38 }, () =>
       '0123456789abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 36)]
     ).join('');
+
     setWallet({
       connected: true,
       address,
+      publicKey: '',
       balance: 5_450_000,
       network: 'Midl Testnet',
+      mode: 'demo',
     });
     setIsProcessing(false);
     addNotification({
@@ -157,16 +230,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [addNotification, t]);
 
+  // ============================================================
+  // Disconnect Wallet
+  // ============================================================
   const disconnectWallet = useCallback(() => {
-    setWallet({ connected: false, address: '', balance: 0, network: 'Midl Testnet' });
+    if (wallet.mode === 'real') {
+      disconnectXverse();
+    }
+    setWallet(INITIAL_WALLET);
     setRole(null);
     addNotification({
       type: 'info',
       title: t('walletDisconnected'),
       message: t('walletDisconnectedMsg'),
     });
-  }, [addNotification, t]);
+  }, [wallet.mode, addNotification, t]);
 
+  // ============================================================
+  // Create Invoice
+  // ============================================================
   const createInvoice = useCallback((data: {
     buyer: string;
     buyerAddress: string;
@@ -198,7 +280,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [wallet.address, role, addNotification, t]);
 
+  // ============================================================
+  // Pay Invoice (dual-mode: real Xverse or demo)
+  // ============================================================
   const payInvoice = useCallback(async (invoiceId: string) => {
+    const invoice = invoices.find(i => i.id === invoiceId);
+    if (!invoice) return;
+
     setIsProcessing(true);
     addNotification({
       type: 'info',
@@ -206,8 +294,63 @@ export function AppProvider({ children }: { children: ReactNode }) {
       message: t('processingPaymentMsg'),
     });
 
-    await new Promise(r => setTimeout(r, 2500));
+    if (wallet.mode === 'real') {
+      // === REAL PAYMENT VIA XVERSE ===
+      try {
+        const result = await sendXverseTransfer(
+          invoice.supplierAddress,
+          invoice.totalAmount
+        );
 
+        setInvoices(prev =>
+          prev.map(inv =>
+            inv.id === invoiceId
+              ? { ...inv, status: 'paid' as const, paidAt: new Date().toISOString(), txHash: result.txid }
+              : inv
+          )
+        );
+
+        // Refresh real balance
+        try {
+          const bal = await getXverseBalance();
+          setWallet(prev => ({ ...prev, balance: bal.total }));
+        } catch {
+          setWallet(prev => ({
+            ...prev,
+            balance: Math.max(0, prev.balance - invoice.totalAmount),
+          }));
+        }
+
+        setIsProcessing(false);
+        addNotification({
+          type: 'success',
+          title: t('paymentConfirmed'),
+          message: t('paymentConfirmedMsg'),
+          txHash: result.txid,
+        });
+        return;
+      } catch (err: unknown) {
+        setIsProcessing(false);
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        if (message === 'USER_REJECTED') {
+          addNotification({
+            type: 'warning',
+            title: t('paymentCancelled'),
+            message: t('paymentCancelledMsg'),
+          });
+        } else {
+          addNotification({
+            type: 'error',
+            title: t('paymentFailed'),
+            message: message || t('paymentFailedMsg'),
+          });
+        }
+        return;
+      }
+    }
+
+    // === DEMO PAYMENT ===
+    await new Promise(r => setTimeout(r, 2500));
     const txHash = generateTxHash();
 
     setInvoices(prev =>
@@ -218,13 +361,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       )
     );
 
-    const invoice = invoices.find(i => i.id === invoiceId);
-    if (invoice) {
-      setWallet(prev => ({
-        ...prev,
-        balance: Math.max(0, prev.balance - invoice.totalAmount),
-      }));
-    }
+    setWallet(prev => ({
+      ...prev,
+      balance: Math.max(0, prev.balance - invoice.totalAmount),
+    }));
 
     setIsProcessing(false);
     addNotification({
@@ -233,7 +373,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       message: t('paymentConfirmedMsg'),
       txHash,
     });
-  }, [invoices, addNotification, t]);
+  }, [invoices, wallet.mode, addNotification, t]);
 
   return (
     <AppContext.Provider

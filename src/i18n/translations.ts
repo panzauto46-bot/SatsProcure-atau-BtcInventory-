@@ -144,6 +144,18 @@ export const translations = {
     paymentConfirmedMsg: 'Transaction settled on Bitcoin via Midl. Invoice status updated to PAID.',
     txHashCopied: 'Tx Hash copied!',
 
+    // Wallet Modes
+    demoMode: 'Demo Mode',
+    demoModeMsg: 'Xverse wallet not detected. Running in demo mode with simulated data.',
+    connectionCancelled: 'Connection Cancelled',
+    connectionCancelledMsg: 'You cancelled the Xverse wallet connection request.',
+    connectionError: 'Connection Error',
+    connectionErrorMsg: 'Failed to connect to Xverse wallet. Please try again.',
+    paymentCancelled: 'Payment Cancelled',
+    paymentCancelledMsg: 'You cancelled the payment in Xverse wallet.',
+    paymentFailed: 'Payment Failed',
+    paymentFailedMsg: 'Transaction could not be completed. Please check your balance and try again.',
+
     // Footer
     decentralizedB2B: 'Decentralized B2B Procurement on Bitcoin',
 
@@ -293,6 +305,18 @@ export const translations = {
     paymentConfirmed: 'Pembayaran Dikonfirmasi On-Chain ✓',
     paymentConfirmedMsg: 'Transaksi diselesaikan di Bitcoin via Midl. Status faktur diperbarui menjadi DIBAYAR.',
     txHashCopied: 'Hash Tx tersalin!',
+
+    // Wallet Modes
+    demoMode: 'Mode Demo',
+    demoModeMsg: 'Wallet Xverse tidak terdeteksi. Berjalan dalam mode demo dengan data simulasi.',
+    connectionCancelled: 'Koneksi Dibatalkan',
+    connectionCancelledMsg: 'Anda membatalkan permintaan koneksi wallet Xverse.',
+    connectionError: 'Kesalahan Koneksi',
+    connectionErrorMsg: 'Gagal menghubungkan ke wallet Xverse. Silakan coba lagi.',
+    paymentCancelled: 'Pembayaran Dibatalkan',
+    paymentCancelledMsg: 'Anda membatalkan pembayaran di wallet Xverse.',
+    paymentFailed: 'Pembayaran Gagal',
+    paymentFailedMsg: 'Transaksi tidak dapat diselesaikan. Periksa saldo Anda dan coba lagi.',
 
     // Footer
     decentralizedB2B: 'Pengadaan B2B Terdesentralisasi di Bitcoin',

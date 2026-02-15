@@ -27,11 +27,15 @@ export interface Invoice {
   notes?: string;
 }
 
+export type WalletMode = 'real' | 'demo';
+
 export interface WalletState {
   connected: boolean;
   address: string;
+  publicKey: string;
   balance: number; // in sats
   network: string;
+  mode: WalletMode;
 }
 
 export interface Notification {

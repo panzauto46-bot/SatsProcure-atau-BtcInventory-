@@ -128,9 +128,16 @@ export function Navbar() {
                   <Wallet className="h-3.5 w-3.5 text-white" />
                 </div>
                 <div className="hidden sm:flex flex-col items-start">
-                  <span className="text-xs font-semibold text-white font-mono">
-                    {formatAddress(wallet.address)}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-white font-mono">
+                      {formatAddress(wallet.address)}
+                    </span>
+                    {wallet.mode === 'demo' && (
+                      <span className="rounded bg-amber-500/20 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-amber-500">
+                        demo
+                      </span>
+                    )}
+                  </div>
                   <span className="text-[10px] text-amber-400 font-medium">
                     {formatSats(wallet.balance)} sats
                   </span>
