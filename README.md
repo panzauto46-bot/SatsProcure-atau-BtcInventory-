@@ -99,7 +99,27 @@ Since testnet faucets can be unreliable, we recommend running the **Hardhat Loca
 
 ---
 
-## 📄 License
+## �️ Roadmap
+
+### Phase 1: Foundation (Current)
+- [x] Hybrid Wallet Integration (Xverse + MetaMask)
+- [x] Basic Invoice Management (Create, Pay, Cancel)
+- [x] Smart Contract Deployment on Testnet/Localhost
+- [x] Premium UI/UX Design
+
+### Phase 2: Enhanced Settlement (Q2 2025)
+- [ ] **Escrow Mechanism:** Funds held in contract until Buyer confirms receipt of goods.
+- [ ] **Partial Payments:** Allow Buyers to pay invoices in installments.
+- [ ] **Mainnet Deployment:** Deploy to Midl Mainnet & Bitcoin Mainnet.
+
+### Phase 3: Scaling & Mobile (Q3 2025)
+- [ ] **Mobile App:** Native iOS/Android app using React Native.
+- [ ] **Lightning Network:** Instant settlement for micro-transactions.
+- [ ] **reputation System:** On-chain reputation score for Suppliers based on successful deliveries.
+
+---
+
+## �📄 License
 
 Distributed under the MIT License.
 
