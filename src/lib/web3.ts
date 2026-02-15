@@ -28,7 +28,7 @@ export const SATS_PROCURE_ABI = [
 export const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || "";
 
 // =============================================================
-// Midl Regtest Configuration
+// Chain Configuration
 // =============================================================
 export const MIDL_REGTEST_PARAMS = {
   chainId: '0x3A99', // 15001
@@ -42,7 +42,21 @@ export const MIDL_REGTEST_PARAMS = {
   blockExplorerUrls: ['https://blockscout.regtest.midl.xyz'],
 };
 
-export const TARGET_NETWORK = MIDL_REGTEST_PARAMS;
+export const LOCALHOST_PARAMS = {
+  chainId: '0x7A69', // 31337
+  chainName: 'Hardhat Local',
+  nativeCurrency: {
+    name: 'ETH',
+    symbol: 'ETH',
+    decimals: 18,
+  },
+  rpcUrls: ['http://127.0.0.1:8545'],
+  blockExplorerUrls: [],
+};
+
+// Auto-detect network based on deployed address (Hardhat default deterministic address)
+const IS_LOCAL = CONTRACT_ADDRESS === "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+export const TARGET_NETWORK = IS_LOCAL ? LOCALHOST_PARAMS : MIDL_REGTEST_PARAMS;
 
 // =============================================================
 // Provider & Contract Access

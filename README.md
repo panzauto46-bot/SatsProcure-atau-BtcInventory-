@@ -11,97 +11,40 @@
 
 **Decentralized B2B Procurement & Settlement System**
 
-SatsProcure is a modern web application designed solely for managing inter-business procurement invoices on-chain. Built with React, TypeScript, and Tailwind CSS, it offers a transparent, secure, and automated workflow. 
+SatsProcure is a modern web application designed for managing inter-business procurement invoices on-chain. Built with React, TypeScript, and Solidity, it offers a transparent, secure, and automated workflow.
 
-The application uniquely combines **Bitcoin/Stacks wallet integration (Xverse)** for user identity/access with **EVM-compatible Smart Contracts (Midl/Ethereum)** for settlement logic, creating a hybrid architecture for demonstration purposes.
+The application uniquely combines **Bitcoin wallet integration (Xverse)** for user identity with **EVM Smart Contracts** for settlement logic.
 
 ---
 
 ## 🚀 Key Features
 
 ### 🏛️ Dual Role System
-- **Supplier Dashboard:** Create invoices, manage inventory items, and track payments.
-- **Buyer Dashboard:** View incoming invoices, inspect item details, and execute payments.
+- **Supplier Dashboard:** Create invoices on-chain, manage inventory items, and track payments.
+- **Buyer Dashboard:** View incoming invoices, inspect item details, and execute payments via MetaMask.
 
-### 📜 Invoice Management
+### 📜 Real-Time Blockchain Settlement
+- **Smart Contract:** powered by `SatsProcure.sol`.
 - **Full Lifecycle:** Create -> Pending -> Paid / Cancelled.
-- **Itemized Details:** Support for multiple line items with quantity and unit price (sats).
-- **Simulated & Real Mode:** Works with both simulated data and real Web3 connections.
+- **On-Chain Data:** All invoices are read directly from the blockchain (no local database).
 
-### 🔗 hybrid Web3 Architecture
-- **Wallet Connection (Identity):** Integrated with **Xverse Wallet** (Sats Connect) for Bitcoin ecosystem identity.
-- **Smart Contract (Settlement):** Features a Solidity Smart Contract (`SatsProcure.sol`) to handle invoice registry and payments.
-- **EVM Integration:** Uses `ethers.js` to interact with the smart contract (simulated on Midl Testnet).
-
-### 🎨 Premium UI/UX
-- **Dark Mode First:** Sleek, modern design with glassmorphism and gradient accents.
-- **Smooth Animations:** Custom keyframe animations for notifications and page transitions.
-- **Bilingual:** One-click toggle between English and Bahasa Indonesia.
+### 🔗 Hybrid Web3 Architecture
+- **Identity:** **Xverse Wallet** (Sats Connect) for Bitcoin-native identity.
+- **Settlement:** **MetaMask** for interacting with the EVM Smart Contract (Localhost / Midl Regtest).
 
 ---
 
-## 🏗️ Architecture
+## 🛠️ Prerequisites
 
-SatsProcure acts as a bridge between traditional procurement workflows and decentralized settlement.
-
-```mermaid
-graph TD
-    User[User] -->|Connects Wallet| FE[Frontend application]
-    FE -->|Identity| Xverse[Xverse / Sats Connect]
-    FE -->|State Management| Context[App Context]
-    FE -->|Settlement Logic| ModWeb3[Web3 Module]
-    
-    subgraph "On-Chain Layer"
-        ModWeb3 -->|RPC Call| Contract[SatsProcure.sol]
-        Contract -->|Store| InvoiceData[Invoice Registry]
-        Contract -->|Execute| Payment[Payment Logic]
-    end
-```
-
-### Smart Contract Logic (`contracts/SatsProcure.sol`)
-1.  **createInvoice**: Registers a new invoice on the blockchain with a unique ID and amount.
-2.  **payInvoice**: Buyer sends crypto (Sats/Eth) to the contract, which forwards it to the Supplier.
-3.  **cancelInvoice**: Supplier can revoke unpaid invoices.
+1.  **Node.js** (v18 or later)
+2.  **Xverse Wallet** (Browser Extension) - for Login
+3.  **MetaMask** (Browser Extension) - for Gas/Transactions
 
 ---
 
-## 🛠️ Tech Stack
+## ⚡ Getting Started (Local Development)
 
-| Category | Technology | Usage |
-|---|---|---|
-| **Frontend** | React 19, TypeScript | Core application framework |
-| **Styling** | Tailwind CSS 4 | Utility-first styling & animations |
-| **Build Tool** | Vite 7 | Fast development & bundling |
-| **Blockchain** | Solidity, Ethers.js | Smart Contract & Web3 Interaction |
-| **Wallet** | Sats Connect, Xverse | Wallet connection standard |
-| **Icons** | Lucide React | Modern, consistent iconography |
-
----
-
-## 📂 Project Structure
-
-```bash
-satsprocure/
-├── contracts/               # Solidity Smart Contracts
-│   └── SatsProcure.sol      # Core settlement logic
-├── src/
-│   ├── components/          # Reusable UI Components
-│   │   ├── Navbar.tsx       # Navigation & Wallet Connect
-│   │   ├── RoleSelector.tsx # Landing Page
-│   │   ├── Dashboard.tsx    # Main App Views
-│   │   └── ...
-│   ├── context/             # Global State (Context API)
-│   ├── i18n/                # Localization (EN/ID)
-│   ├── lib/                 # External Integrations
-│   │   ├── web3.ts          # Ethers.js / Contract Calls
-│   │   └── xverse.ts        # Bitcoin Wallet Logic
-│   └── types/               # TypeScript Definitions
-└── ...
-```
-
----
-
-## ⚡ Getting Started
+Since testnet faucets can be unreliable, we recommend running the **Hardhat Local Network** for a 100% functional demo.
 
 1.  **Clone the repository**
     ```bash
@@ -114,32 +57,50 @@ satsprocure/
     npm install
     ```
 
-3.  **Run Development Server**
+3.  **Start Local Blockchain**
+    Open a terminal and run:
+    ```bash
+    npx hardhat node
+    ```
+    *Keep this terminal running!*
+
+4.  **Configure MetaMask**
+    -   Add Network: **Hardhat Local**
+        -   RPC URL: `http://127.0.0.1:8545`
+        -   Chain ID: `31337`
+        -   Currency: `ETH`
+    -   **Import Test Account:**
+        -   Copy Private Key from Account #0 in the terminal (e.g., `ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`).
+        -   Import into MetaMask to get **10,000 ETH** balance.
+
+5.  **Deploy Contract**
+    In a *new* terminal:
+    ```bash
+    npx hardhat run scripts/deploy.cjs --network localhost
+    ```
+    *Check `.env` file to ensure `VITE_CONTRACT_ADDRESS` is updated.*
+
+6.  **Run Frontend**
     ```bash
     npm run dev
     ```
-    Open `http://localhost:5173` in your browser.
-
-4.  **Simulate Smart Contract**
-    *   The app includes a "Demo Mode" fallback.
-    *   To use "Real Mode", ensure you have a browser wallet (Metamask) installed and configured for the target network (Midl Testnet).
+    Open `http://localhost:5173`.
 
 ---
 
-## 🤝 Application Flow
+## 🤝 How to Use
 
-1.  **Connect Wallet:** Click "Connect Wallet" (defaults to Demo Mode if Xverse not found).
+1.  **Connect Wallet:** Click "Connect Wallet" (requires Xverse).
 2.  **Choose Role:** Select **Supplier** to issue invoices or **Buyer** to pay them.
-3.  **Create Invoice:** (As Supplier) Fill in buyer details and items. Click "Deploy Invoice" to interact with the Smart Contract.
-4.  **Pay Invoice:** (As Buyer) Find unpaid invoices and click "Pay". The app triggers a Web3 transaction.
+3.  **Create Invoice:** (As Supplier) Fill in details -> Click "Create Invoice" -> **Sign with MetaMask**.
+4.  **Pay Invoice:** (As Buyer) Click "Pay" -> **Confirm Transaction in MetaMask**.
+5.  **Verify:** See the status change to **Paid** instantly!
 
 ---
 
 ## 📄 License
 
 Distributed under the MIT License.
-
----
 
 <p align="center">
   <strong>SatsProcure</strong> — Empowering B2B Commerce on the Block(chain).
