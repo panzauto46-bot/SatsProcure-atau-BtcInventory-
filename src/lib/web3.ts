@@ -1,27 +1,31 @@
-
 import { ethers } from 'ethers';
 
 // =============================================================
-// SatsProcure Smart Contract ABI
+// SatsProcure Smart Contract ABI (matches contracts/SatsProcure.sol)
 // =============================================================
 export const SATS_PROCURE_ABI = [
+  // Write functions
   "function createInvoice(string _invoiceNumber, address _buyer, uint256 _amount, uint256 _dueDate, string _notes) public",
   "function payInvoice(uint256 _id) public payable",
   "function cancelInvoice(uint256 _id) public",
+
+  // Read functions
   "function getInvoice(uint256 _id) public view returns (tuple(uint256 id, string invoiceNumber, address supplier, address buyer, uint256 amount, uint256 createdAt, uint256 dueDate, string notes, bool isPaid, bool isCancelled))",
   "function invoiceCount() public view returns (uint256)",
   "function invoiceNumberToId(string) public view returns (uint256)",
+  "function getMySupplierInvoices() public view returns (tuple(uint256 id, string invoiceNumber, address supplier, address buyer, uint256 amount, uint256 createdAt, uint256 dueDate, string notes, bool isPaid, bool isCancelled)[])",
+  "function getMyBuyerInvoices() public view returns (tuple(uint256 id, string invoiceNumber, address supplier, address buyer, uint256 amount, uint256 createdAt, uint256 dueDate, string notes, bool isPaid, bool isCancelled)[])",
+
+  // Events
   "event InvoiceCreated(uint256 indexed id, string invoiceNumber, address indexed supplier, address indexed buyer, uint256 amount, uint256 dueDate)",
   "event InvoicePaid(uint256 indexed id, string invoiceNumber, address indexed payer, uint256 amount, uint256 paidAt)",
   "event InvoiceCancelled(uint256 indexed id, string invoiceNumber)"
 ];
 
 // =============================================================
-// Contract Address Configuration
-// 1. Checks VITE_CONTRACT_ADDRESS environment variable (Best for Vercel)
-// 2. Falls back to a placeholder if not set
+// Contract Address — reads from env var set in Vercel dashboard
 // =============================================================
-export const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || "0xYourContractAddressHere";
+export const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || "";
 
 // =============================================================
 // Midl Regtest Configuration
@@ -38,11 +42,10 @@ export const MIDL_REGTEST_PARAMS = {
   blockExplorerUrls: ['https://blockscout.regtest.midl.xyz'],
 };
 
-// Target Network is always Midl Regtest for production
 export const TARGET_NETWORK = MIDL_REGTEST_PARAMS;
 
 // =============================================================
-// Utilities
+// Provider & Contract Access
 // =============================================================
 
 export const getProvider = () => {
@@ -57,9 +60,10 @@ export const getReadOnlyProvider = () => {
 };
 
 export const getContract = async (signerOrProvider?: ethers.Signer | ethers.Provider) => {
+  if (!CONTRACT_ADDRESS) throw new Error("Contract not deployed yet");
   if (!signerOrProvider) {
     const provider = getProvider();
-    if (!provider) throw new Error("No Ethereum provider found");
+    if (!provider) throw new Error("No wallet found");
     const signer = await provider.getSigner();
     signerOrProvider = signer;
   }
@@ -67,31 +71,31 @@ export const getContract = async (signerOrProvider?: ethers.Signer | ethers.Prov
 };
 
 export const getReadOnlyContract = () => {
+  if (!CONTRACT_ADDRESS) throw new Error("Contract not deployed yet");
   const provider = getReadOnlyProvider();
   return new ethers.Contract(CONTRACT_ADDRESS, SATS_PROCURE_ABI, provider);
 };
+
+// =============================================================
+// Wallet Connection (via MetaMask to Midl EVM)
+// =============================================================
 
 export const connectWallet = async () => {
   const provider = getProvider();
   if (!provider) throw new Error("MetaMask or compatible wallet not found");
 
-  try {
-    await provider.send("eth_requestAccounts", []);
-    await switchNetwork();
-    const signer = await provider.getSigner();
-    const address = await signer.getAddress();
-    const balance = await provider.getBalance(address);
+  await provider.send("eth_requestAccounts", []);
+  await switchNetwork();
+  const signer = await provider.getSigner();
+  const address = await signer.getAddress();
+  const balance = await provider.getBalance(address);
 
-    return {
-      provider,
-      signer,
-      address,
-      balance: ethers.formatEther(balance),
-    };
-  } catch (error) {
-    console.error("Error connecting wallet:", error);
-    throw error;
-  }
+  return {
+    provider,
+    signer,
+    address,
+    balance: ethers.formatEther(balance),
+  };
 };
 
 export const switchNetwork = async () => {
@@ -104,33 +108,23 @@ export const switchNetwork = async () => {
     ]);
   } catch (switchError: any) {
     if (switchError.code === 4902) {
-      try {
-        await provider.send('wallet_addEthereumChain', [TARGET_NETWORK]);
-      } catch (addError) {
-        console.error("Failed to add network:", addError);
-      }
+      await provider.send('wallet_addEthereumChain', [TARGET_NETWORK]);
     }
-    console.error("Failed to switch network:", switchError);
   }
 };
 
+// =============================================================
+// Helpers
+// =============================================================
+
 export const isContractDeployed = (): boolean => {
-  return CONTRACT_ADDRESS !== "0xYourContractAddressHere" &&
-    CONTRACT_ADDRESS.length === 42 &&
-    CONTRACT_ADDRESS.startsWith("0x");
+  return !!CONTRACT_ADDRESS && CONTRACT_ADDRESS.length === 42 && CONTRACT_ADDRESS.startsWith("0x");
 };
 
 export const getTxExplorerUrl = (txHash: string): string => {
-  // If we have a hash, return the explorer URL
-  if (txHash && TARGET_NETWORK.blockExplorerUrls && TARGET_NETWORK.blockExplorerUrls.length > 0) {
-    return `${TARGET_NETWORK.blockExplorerUrls[0]}/tx/${txHash}`;
-  }
-  return "#";
+  return `${TARGET_NETWORK.blockExplorerUrls[0]}/tx/${txHash}`;
 };
 
 export const getContractExplorerUrl = (): string => {
-  if (CONTRACT_ADDRESS && TARGET_NETWORK.blockExplorerUrls && TARGET_NETWORK.blockExplorerUrls.length > 0) {
-    return `${TARGET_NETWORK.blockExplorerUrls[0]}/address/${CONTRACT_ADDRESS}`;
-  }
-  return "#";
+  return `${TARGET_NETWORK.blockExplorerUrls[0]}/address/${CONTRACT_ADDRESS}`;
 };

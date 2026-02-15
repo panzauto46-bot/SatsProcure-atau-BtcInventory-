@@ -71,11 +71,10 @@ export function Dashboard() {
           {/* Smart Contract Info Toggle */}
           <button
             onClick={() => setShowContractInfo(!showContractInfo)}
-            className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-medium transition-all ${
-              showContractInfo
+            className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-medium transition-all ${showContractInfo
                 ? 'border-violet-500/30 bg-violet-500/10 text-violet-400'
                 : 'border-gray-800 bg-gray-900/60 text-gray-400 hover:bg-gray-800 hover:text-white'
-            }`}
+              }`}
           >
             <Code2 className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{t('smartContract')}</span>
@@ -102,37 +101,34 @@ export function Dashboard() {
           </div>
           <div className="rounded-lg bg-gray-950/80 p-4 font-mono text-xs text-gray-300 overflow-x-auto">
             <pre className="whitespace-pre-wrap leading-relaxed">{`// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
-contract SatsProcureInvoice {
+contract SatsProcure {
     struct Invoice {
-        address supplier;
+        uint256 id;
+        string invoiceNumber;
+        address payable supplier;
         address buyer;
-        uint256 amount;      // in satoshis
-        bool isPaid;
+        uint256 amount;
         uint256 createdAt;
-        uint256 paidAt;
+        uint256 dueDate;
+        string notes;
+        bool isPaid;
+        bool isCancelled;
     }
 
-    mapping(bytes32 => Invoice) public invoices;
-    event InvoiceCreated(bytes32 indexed id, address supplier, uint256 amount);
-    event InvoicePaid(bytes32 indexed id, address buyer, uint256 paidAt);
+    uint256 public invoiceCount;
+    mapping(uint256 => Invoice) public invoices;
+    mapping(address => uint256[]) public supplierInvoices;
+    mapping(address => uint256[]) public buyerInvoices;
 
-    function createInvoice(bytes32 _id, address _buyer, uint256 _amount) external {
-        invoices[_id] = Invoice(msg.sender, _buyer, _amount, false, block.timestamp, 0);
-        emit InvoiceCreated(_id, msg.sender, _amount);
-    }
+    function createInvoice(string memory _invoiceNumber, address _buyer,
+        uint256 _amount, uint256 _dueDate, string memory _notes) public { ... }
 
-    function payInvoice(bytes32 _id) external payable {
-        Invoice storage inv = invoices[_id];
-        require(!inv.isPaid, "Already paid");
-        require(msg.sender == inv.buyer, "Not buyer");
-        require(msg.value >= inv.amount, "Insufficient");
-        inv.isPaid = true;
-        inv.paidAt = block.timestamp;
-        payable(inv.supplier).transfer(msg.value);
-        emit InvoicePaid(_id, msg.sender, block.timestamp);
-    }
+    function payInvoice(uint256 _id) public payable { ... }
+    function cancelInvoice(uint256 _id) public { ... }
+    function getMySupplierInvoices() public view returns (Invoice[] memory) { ... }
+    function getMyBuyerInvoices() public view returns (Invoice[] memory) { ... }
 }`}</pre>
           </div>
           <p className="mt-3 text-xs text-gray-500">
@@ -153,11 +149,10 @@ contract SatsProcureInvoice {
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-all ${
-              filter === f
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-all ${filter === f
                 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                 : 'text-gray-500 hover:text-gray-300 border border-transparent'
-            }`}
+              }`}
           >
             {f === 'all' ? t('filterAll') : f === 'pending' ? t('filterPending') : t('filterPaid')}
           </button>

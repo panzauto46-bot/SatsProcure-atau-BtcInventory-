@@ -27,7 +27,7 @@ export interface Invoice {
   notes?: string;
 }
 
-export type WalletMode = 'real' | 'demo';
+export type WalletMode = 'real';
 
 export interface WalletState {
   connected: boolean;
