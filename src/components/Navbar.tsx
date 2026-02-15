@@ -69,11 +69,10 @@ export function Navbar() {
               <div className="absolute right-0 mt-2 w-40 rounded-xl border border-gray-700/50 bg-gray-900 p-1.5 shadow-2xl shadow-black/50 animate-in fade-in slide-in-from-top-2">
                 <button
                   onClick={() => { setLang('en'); setShowLangDropdown(false); }}
-                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                    lang === 'en'
+                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${lang === 'en'
                       ? 'bg-amber-500/10 text-amber-400'
                       : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                  }`}
+                    }`}
                 >
                   <span className="text-base">🇺🇸</span>
                   <span>English</span>
@@ -81,11 +80,10 @@ export function Navbar() {
                 </button>
                 <button
                   onClick={() => { setLang('id'); setShowLangDropdown(false); }}
-                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                    lang === 'id'
+                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${lang === 'id'
                       ? 'bg-amber-500/10 text-amber-400'
                       : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                  }`}
+                    }`}
                 >
                   <span className="text-base">🇮🇩</span>
                   <span>Indonesia</span>
@@ -132,11 +130,6 @@ export function Navbar() {
                     <span className="text-xs font-semibold text-white font-mono">
                       {formatAddress(wallet.address)}
                     </span>
-                    {wallet.mode === 'demo' && (
-                      <span className="rounded bg-amber-500/20 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-amber-500">
-                        demo
-                      </span>
-                    )}
                   </div>
                   <span className="text-[10px] text-amber-400 font-medium">
                     {formatSats(wallet.balance)} sats

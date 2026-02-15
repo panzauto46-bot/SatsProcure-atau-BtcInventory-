@@ -130,7 +130,7 @@ const INITIAL_WALLET: WalletState = {
   publicKey: '',
   balance: 0,
   network: 'Midl Testnet',
-  mode: 'demo',
+  mode: 'real', // Enforce real mode
 };
 
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -209,34 +209,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
         return;
       }
+    } else {
+      // Xverse NOT Installed
+      setIsProcessing(false);
+      addNotification({
+        type: 'error',
+        title: 'Wallet Not Found',
+        message: 'Please install Xverse Wallet to continue.',
+      });
+      window.open('https://www.xverse.app/download', '_blank');
     }
-
-    // === DEMO MODE (Xverse not installed) ===
-    addNotification({
-      type: 'info',
-      title: t('demoMode'),
-      message: t('demoModeMsg'),
-    });
-
-    await new Promise(r => setTimeout(r, 1500));
-    const address = 'bc1q' + Array.from({ length: 38 }, () =>
-      '0123456789abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 36)]
-    ).join('');
-
-    setWallet({
-      connected: true,
-      address,
-      publicKey: '',
-      balance: 5_450_000,
-      network: 'Midl Testnet',
-      mode: 'demo',
-    });
-    setIsProcessing(false);
-    addNotification({
-      type: 'success',
-      title: t('walletConnected'),
-      message: `${t('walletConnectedMsg')} ${address.slice(0, 10)}...${address.slice(-6)}`,
-    });
   }, [addNotification, t]);
 
   // ============================================================
@@ -393,6 +375,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           message: t('paymentConfirmedMsg'),
           txHash: result.txid,
         });
+        return;
         return;
       } catch (err: unknown) {
         setIsProcessing(false);
