@@ -47,13 +47,12 @@ contract SatsProcure {
         string invoiceNumber
     );
 
+    // Mappings to track user invoices efficiently
+    mapping(address => uint256[]) public supplierInvoices;
+    mapping(address => uint256[]) public buyerInvoices;
+
     /**
      * @dev Create a new invoice.
-     * @param _invoiceNumber Unique identifier for the invoice (e.g., INV-2024-001)
-     * @param _buyer Address of the buyer responsible for payment
-     * @param _amount Total amount in wei (or smallest unit of the currency)
-     * @param _dueDate Timestamp when the payment is due
-     * @param _notes Optional notes or description (can include IPFS hash for item details)
      */
     function createInvoice(
         string memory _invoiceNumber,
@@ -83,13 +82,16 @@ contract SatsProcure {
         });
 
         invoiceNumberToId[_invoiceNumber] = invoiceCount;
+        
+        // Track for efficient retrieval
+        supplierInvoices[msg.sender].push(invoiceCount);
+        buyerInvoices[_buyer].push(invoiceCount);
 
         emit InvoiceCreated(invoiceCount, _invoiceNumber, msg.sender, _buyer, _amount, _dueDate);
     }
 
     /**
      * @dev Pay an existing invoice.
-     * @param _id The ID of the invoice to pay.
      */
     function payInvoice(uint256 _id) public payable {
         Invoice storage invoice = invoices[_id];
@@ -98,9 +100,6 @@ contract SatsProcure {
         require(!invoice.isPaid, "Invoice is already paid");
         require(!invoice.isCancelled, "Invoice is cancelled");
         require(msg.value == invoice.amount, "Incorrect payment amount");
-        // Optional: restrict payer to be the buyer?
-        // require(msg.sender == invoice.buyer, "Only designated buyer can pay"); 
-        // Allowing anyone to pay on behalf of buyer is also a valid pattern.
 
         invoice.isPaid = true;
 
@@ -111,8 +110,7 @@ contract SatsProcure {
     }
 
     /**
-     * @dev Cancel an unpaid invoice. Only the supplier can cancel.
-     * @param _id The ID of the invoice to cancel.
+     * @dev Cancel an unpaid invoice.
      */
     function cancelInvoice(uint256 _id) public {
         Invoice storage invoice = invoices[_id];
@@ -129,9 +127,34 @@ contract SatsProcure {
 
     /**
      * @dev Get invoice details.
-     * @param _id The ID of the invoice.
      */
     function getInvoice(uint256 _id) public view returns (Invoice memory) {
         return invoices[_id];
+    }
+
+    /**
+     * @dev Get all invoices where the caller is the supplier.
+     */
+    function getMySupplierInvoices() public view returns (Invoice[] memory) {
+        uint256[] memory ids = supplierInvoices[msg.sender];
+        Invoice[] memory myInvoices = new Invoice[](ids.length);
+        
+        for (uint256 i = 0; i < ids.length; i++) {
+            myInvoices[i] = invoices[ids[i]];
+        }
+        return myInvoices;
+    }
+
+    /**
+     * @dev Get all invoices where the caller is the buyer.
+     */
+    function getMyBuyerInvoices() public view returns (Invoice[] memory) {
+        uint256[] memory ids = buyerInvoices[msg.sender];
+        Invoice[] memory myInvoices = new Invoice[](ids.length);
+        
+        for (uint256 i = 0; i < ids.length; i++) {
+            myInvoices[i] = invoices[ids[i]];
+        }
+        return myInvoices;
     }
 }
