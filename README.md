@@ -3,246 +3,144 @@
   <img src="https://img.shields.io/badge/React-19.x-61DAFB?style=for-the-badge&logo=react&logoColor=white" alt="React" />
   <img src="https://img.shields.io/badge/TypeScript-5.9-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Tailwind_CSS-4.x-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/Solidity-0.8-363636?style=for-the-badge&logo=solidity&logoColor=white" alt="Solidity" />
   <img src="https://img.shields.io/badge/Vite-7.x-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
-  <img src="https://img.shields.io/badge/Vercel-Deploy-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Vercel" />
 </p>
 
 # SatsProcure
 
-**Decentralized B2B Procurement & Settlement on Bitcoin**
+**Decentralized B2B Procurement & Settlement System**
 
-SatsProcure is a modern web application for managing inter-business procurement invoices on-chain. Built with React, TypeScript, and Tailwind CSS, it provides a transparent, secure, and automated procurement workflow powered by Bitcoin smart contracts via the Midl network.
+SatsProcure is a modern web application designed solely for managing inter-business procurement invoices on-chain. Built with React, TypeScript, and Tailwind CSS, it offers a transparent, secure, and automated workflow. 
 
----
-
-## Features
-
-- **Dual Role System** -- Switch between Supplier and Buyer roles with distinct dashboards and capabilities
-- **Invoice Management** -- Create, view, filter, and track procurement invoices with full item-level detail
-- **On-Chain Settlement** -- Simulate Bitcoin smart contract deployment and payment execution via Midl RPC
-- **Xverse Wallet Integration** -- Connect/disconnect wallet simulation with address generation and balance tracking
-- **Smart Contract Viewer** -- Built-in Solidity contract viewer showing the on-chain invoice logic
-- **Web3 Integration** -- Integration with Midl RPC for executing smart contract functions via Metamask/Web3
-- **Smart Contract Integration** -- Solidity contract for invoice creation, payment, and cancellation (Phase 4)
-- **Bilingual Support** -- Full English and Bahasa Indonesia localization (i18n)
-- **Dark Mode UI** -- Premium dark theme with gradient accents, glassmorphism effects, and smooth animations
-- **Responsive Design** -- Fully responsive layout optimized for mobile, tablet, and desktop
-- **Real-time Notifications** -- Toast notification system with auto-dismiss and transaction hash copy
-- **Invoice Detail Modal** -- Comprehensive invoice view with on-chain data, contract address, and tx hash
+The application uniquely combines **Bitcoin/Stacks wallet integration (Xverse)** for user identity/access with **EVM-compatible Smart Contracts (Midl/Ethereum)** for settlement logic, creating a hybrid architecture for demonstration purposes.
 
 ---
 
-## Tech Stack
+## 🚀 Key Features
 
-| Technology | Version | Purpose |
+### 🏛️ Dual Role System
+- **Supplier Dashboard:** Create invoices, manage inventory items, and track payments.
+- **Buyer Dashboard:** View incoming invoices, inspect item details, and execute payments.
+
+### 📜 Invoice Management
+- **Full Lifecycle:** Create -> Pending -> Paid / Cancelled.
+- **Itemized Details:** Support for multiple line items with quantity and unit price (sats).
+- **Simulated & Real Mode:** Works with both simulated data and real Web3 connections.
+
+### 🔗 hybrid Web3 Architecture
+- **Wallet Connection (Identity):** Integrated with **Xverse Wallet** (Sats Connect) for Bitcoin ecosystem identity.
+- **Smart Contract (Settlement):** Features a Solidity Smart Contract (`SatsProcure.sol`) to handle invoice registry and payments.
+- **EVM Integration:** Uses `ethers.js` to interact with the smart contract (simulated on Midl Testnet).
+
+### 🎨 Premium UI/UX
+- **Dark Mode First:** Sleek, modern design with glassmorphism and gradient accents.
+- **Smooth Animations:** Custom keyframe animations for notifications and page transitions.
+- **Bilingual:** One-click toggle between English and Bahasa Indonesia.
+
+---
+
+## 🏗️ Architecture
+
+SatsProcure acts as a bridge between traditional procurement workflows and decentralized settlement.
+
+```mermaid
+graph TD
+    User[User] -->|Connects Wallet| FE[Frontend application]
+    FE -->|Identity| Xverse[Xverse / Sats Connect]
+    FE -->|State Management| Context[App Context]
+    FE -->|Settlement Logic| ModWeb3[Web3 Module]
+    
+    subgraph "On-Chain Layer"
+        ModWeb3 -->|RPC Call| Contract[SatsProcure.sol]
+        Contract -->|Store| InvoiceData[Invoice Registry]
+        Contract -->|Execute| Payment[Payment Logic]
+    end
+```
+
+### Smart Contract Logic (`contracts/SatsProcure.sol`)
+1.  **createInvoice**: Registers a new invoice on the blockchain with a unique ID and amount.
+2.  **payInvoice**: Buyer sends crypto (Sats/Eth) to the contract, which forwards it to the Supplier.
+3.  **cancelInvoice**: Supplier can revoke unpaid invoices.
+
+---
+
+## 🛠️ Tech Stack
+
+| Category | Technology | Usage |
 |---|---|---|
-| React | 19.x | UI library with hooks & context |
-| TypeScript | 5.9 | Type-safe development |
-| Vite | 7.x | Build tool & dev server |
-| Tailwind CSS | 4.x | Utility-first CSS framework |
-| Lucide React | latest | Icon library |
-| UUID | 13.x | Unique identifier generation |
+| **Frontend** | React 19, TypeScript | Core application framework |
+| **Styling** | Tailwind CSS 4 | Utility-first styling & animations |
+| **Build Tool** | Vite 7 | Fast development & bundling |
+| **Blockchain** | Solidity, Ethers.js | Smart Contract & Web3 Interaction |
+| **Wallet** | Sats Connect, Xverse | Wallet connection standard |
+| **Icons** | Lucide React | Modern, consistent iconography |
 
 ---
 
-## Project Structure
+## 📂 Project Structure
 
-```
+```bash
 satsprocure/
-├── contracts/               # Solidity smart contracts
-│   └── SatsProcure.sol      # Main procurement contract
-├── public/                  # Static assets
+├── contracts/               # Solidity Smart Contracts
+│   └── SatsProcure.sol      # Core settlement logic
 ├── src/
-│   ├── components/          # React UI components
-│   │   ├── Navbar.tsx           # Navigation bar with wallet connection
-│   │   ├── RoleSelector.tsx     # Landing page & role selection
-│   │   ├── Dashboard.tsx        # Main dashboard with filters
-│   │   ├── StatsCards.tsx       # Statistics overview cards
-│   │   ├── InvoiceTable.tsx     # Expandable invoice table
-│   │   ├── CreateInvoiceModal.tsx   # Invoice creation form
-│   │   ├── InvoiceDetailModal.tsx   # Invoice detail view
-│   │   ├── PayConfirmModal.tsx      # Payment confirmation dialog
-│   │   └── Notifications.tsx       # Toast notification system
-│   ├── context/
-│   │   └── AppContext.tsx       # Global state management
-│   ├── i18n/
-│   │   ├── LanguageContext.tsx  # Language provider
-│   │   └── translations.ts     # EN/ID translation strings
-│   ├── types/
-│   │   └── index.ts             # TypeScript interfaces
-│   ├── utils/
-│   │   └── cn.ts                # Tailwind class merge utility
-│   ├── App.tsx                  # Root application component
-│   ├── main.tsx                 # Application entry point
-│   └── index.css                # Global styles & animations
-├── index.html                   # HTML template
-├── package.json
-├── tsconfig.json
-└── vite.config.ts
+│   ├── components/          # Reusable UI Components
+│   │   ├── Navbar.tsx       # Navigation & Wallet Connect
+│   │   ├── RoleSelector.tsx # Landing Page
+│   │   ├── Dashboard.tsx    # Main App Views
+│   │   └── ...
+│   ├── context/             # Global State (Context API)
+│   ├── i18n/                # Localization (EN/ID)
+│   ├── lib/                 # External Integrations
+│   │   ├── web3.ts          # Ethers.js / Contract Calls
+│   │   └── xverse.ts        # Bitcoin Wallet Logic
+│   └── types/               # TypeScript Definitions
+└── ...
 ```
 
 ---
 
-## Getting Started
+## ⚡ Getting Started
 
-### Prerequisites
+1.  **Clone the repository**
+    ```bash
+    git clone https://github.com/panzauto46-bot/SatsProcure-atau-BtcInventory-.git
+    cd SatsProcure-atau-BtcInventory-
+    ```
 
-- **Node.js** >= 18.x
-- **npm** >= 9.x (or yarn / pnpm)
+2.  **Install Dependencies**
+    ```bash
+    npm install
+    ```
 
-### Installation
+3.  **Run Development Server**
+    ```bash
+    npm run dev
+    ```
+    Open `http://localhost:5173` in your browser.
 
-```bash
-# Clone the repository
-git clone https://github.com/panzauto46-bot/SatsProcure-atau-BtcInventory-.git
-
-# Navigate to the project directory
-cd SatsProcure-atau-BtcInventory-
-
-# Install dependencies
-npm install
-
-# Start the development server
-npm run dev
-```
-
-The application will be available at `http://localhost:5173`.
-
-### Build for Production
-
-```bash
-npm run build
-```
-
-The production build will be generated in the `dist/` directory.
-
-### Preview Production Build
-
-```bash
-npm run preview
-```
+4.  **Simulate Smart Contract**
+    *   The app includes a "Demo Mode" fallback.
+    *   To use "Real Mode", ensure you have a browser wallet (Metamask) installed and configured for the target network (Midl Testnet).
 
 ---
 
-## Deployment
+## 🤝 Application Flow
 
-### Deploy to Vercel
-
-This project is pre-configured for seamless deployment on Vercel.
-
-1. Push your code to GitHub
-2. Go to [vercel.com](https://vercel.com) and import your repository
-3. Vercel will auto-detect the Vite framework and configure:
-   - **Build Command:** `npm run build`
-   - **Output Directory:** `dist`
-   - **Install Command:** `npm install`
-4. Click **Deploy**
-
-Alternatively, deploy via Vercel CLI:
-
-```bash
-npm i -g vercel
-vercel
-```
+1.  **Connect Wallet:** Click "Connect Wallet" (defaults to Demo Mode if Xverse not found).
+2.  **Choose Role:** Select **Supplier** to issue invoices or **Buyer** to pay them.
+3.  **Create Invoice:** (As Supplier) Fill in buyer details and items. Click "Deploy Invoice" to interact with the Smart Contract.
+4.  **Pay Invoice:** (As Buyer) Find unpaid invoices and click "Pay". The app triggers a Web3 transaction.
 
 ---
 
-## Application Flow
+## 📄 License
 
-```
-Connect Wallet (Xverse)
-        │
-        v
-  Select Role
-  ┌─────┴─────┐
-  │            │
-Supplier     Buyer
-  │            │
-  v            v
-Create       View
-Invoices     Invoices
-  │            │
-  v            v
-Deploy to    Pay via
-Smart        Smart
-Contract     Contract
-  │            │
-  v            v
-  On-Chain Settlement
-  (Bitcoin via Midl RPC)
-```
-
-### Supplier Workflow
-1. Connect Xverse wallet
-2. Select **Supplier** role
-3. Create invoices with buyer info and item list
-4. Deploy invoices to smart contracts via Midl RPC
-5. Monitor payment status on the dashboard
-
-### Buyer Workflow
-1. Connect Xverse wallet
-2. Select **Buyer** role
-3. View incoming invoices and item details
-4. Confirm and execute on-chain payments
-5. Receive transaction confirmation with tx hash
-
----
-
-## Screenshots
-
-| Landing Page | Dashboard |
-|---|---|
-| Dark-themed hero section with feature cards | Invoice management with stats and filters |
-
-| Create Invoice | Payment Confirmation |
-|---|---|
-| Multi-item form with smart contract deployment | On-chain transaction warning and execution path |
-
----
-
-## Key Components
-
-### AppContext
-Global state management using React Context API. Manages wallet state, invoice CRUD, role selection, and notification system.
-
-### Invoice System
-- Unique invoice numbers (`INV-YYYY-NNNN`)
-- Multi-item support with quantity and unit price
-- Status tracking: `pending` | `paid` | `cancelled`
-- Smart contract address and transaction hash generation
-
-### i18n (Internationalization)
-Full bilingual support with `LanguageContext` provider. All UI strings are externalized in `translations.ts` supporting English and Bahasa Indonesia.
-
----
-
-## Environment
-
-- **Network:** Midl Testnet (simulated)
-- **Wallet:** Xverse (simulated)
-- **Currency:** Satoshi (sats)
-
-> **Note:** This is a frontend demo/prototype. Wallet connections, smart contract deployments, and payments are simulated for demonstration purposes. No real Bitcoin transactions are executed.
-
----
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
-## License
-
-This project is open source and available under the [MIT License](LICENSE).
+Distributed under the MIT License.
 
 ---
 
 <p align="center">
-  <strong>SatsProcure</strong> -- Decentralized B2B Procurement on Bitcoin<br/>
-  <sub>Powered by Midl SDK | Built with React + TypeScript + Tailwind CSS</sub>
+  <strong>SatsProcure</strong> — Empowering B2B Commerce on the Block(chain).
 </p>
