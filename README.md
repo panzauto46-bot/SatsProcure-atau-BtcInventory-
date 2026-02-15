@@ -22,6 +22,7 @@ SatsProcure is a modern web application for managing inter-business procurement 
 - **On-Chain Settlement** -- Simulate Bitcoin smart contract deployment and payment execution via Midl RPC
 - **Xverse Wallet Integration** -- Connect/disconnect wallet simulation with address generation and balance tracking
 - **Smart Contract Viewer** -- Built-in Solidity contract viewer showing the on-chain invoice logic
+- **Smart Contract Integration** -- Solidity contract for invoice creation, payment, and cancellation (Phase 4)
 - **Bilingual Support** -- Full English and Bahasa Indonesia localization (i18n)
 - **Dark Mode UI** -- Premium dark theme with gradient accents, glassmorphism effects, and smooth animations
 - **Responsive Design** -- Fully responsive layout optimized for mobile, tablet, and desktop
@@ -47,6 +48,8 @@ SatsProcure is a modern web application for managing inter-business procurement 
 
 ```
 satsprocure/
+├── contracts/               # Solidity smart contracts
+│   └── SatsProcure.sol      # Main procurement contract
 ├── public/                  # Static assets
 ├── src/
 │   ├── components/          # React UI components
