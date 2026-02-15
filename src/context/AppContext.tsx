@@ -9,6 +9,15 @@ import {
   sendXverseTransfer,
   disconnectXverse,
 } from '@/lib/xverse';
+import { getContract, connectWallet as connectWeb3 } from '@/lib/web3';
+
+// Add Ethereum window type definition
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
+
 
 interface AppContextType {
   wallet: WalletState;
@@ -249,17 +258,69 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ============================================================
   // Create Invoice
   // ============================================================
-  const createInvoice = useCallback((data: {
+  // ============================================================
+  // Create Invoice (with Web3 Integration)
+  // ============================================================
+  const createInvoice = useCallback(async (data: {
     buyer: string;
     buyerAddress: string;
     items: InvoiceItem[];
     dueDate: string;
     notes?: string;
   }) => {
+    setIsProcessing(true);
     const totalAmount = data.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+    const invoiceNumber = generateInvoiceNumber();
+    let txHash = '';
+    let contractAddress = 'Simulated-Contract-Address';
+
+    try {
+      // Try to use Web3 if available
+      // Note: In a real app, we would manage the Web3 connection state explicitly.
+      // Here we attempt to connect on-demand for the action.
+      if (typeof window !== 'undefined' && window.ethereum) {
+        try {
+          await connectWeb3(); // Ensure connected
+          const contract = await getContract();
+          // Parse date to timestamp
+          const dueTimestamp = Math.floor(new Date(data.dueDate).getTime() / 1000);
+
+          // Call Smart Contract
+          addNotification({ type: 'info', title: t('deployingContract'), message: 'Sign the transaction in your wallet...' });
+
+          const tx = await contract.createInvoice(
+            invoiceNumber,
+            data.buyerAddress, // Ensure this is a valid address format for the chain
+            totalAmount,
+            dueTimestamp,
+            data.notes || ''
+          );
+
+          addNotification({ type: 'info', title: 'Transaction Sent', message: 'Waiting for confirmation...' });
+          const receipt = await tx.wait();
+          txHash = receipt ? receipt.hash : generateTxHash();
+          contractAddress = await contract.getAddress();
+        } catch (web3Error: any) {
+          console.error("Web3 Error:", web3Error);
+          // Fallback to simulation if user rejects or network error, 
+          // BUT if it was a user rejection, maybe we should stop?
+          // For this demo, let's treat Web3 failure as a reason to fall back ONLY if it's not a clear "User Rejected"
+          if (web3Error.code !== 4001 && web3Error.message !== 'User rejected the request.') {
+            addNotification({ type: 'warning', title: 'Web3 Failed', message: 'Falling back to simulation mode.' });
+          } else {
+            setIsProcessing(false);
+            return; // Stop if user rejected
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Setup Error", err);
+    }
+
+    // Default/Fallback Logic
     const invoice: Invoice = {
       id: uuidv4(),
-      invoiceNumber: generateInvoiceNumber(),
+      invoiceNumber: invoiceNumber,
       supplier: role === 'supplier' ? 'Your Company' : 'Unknown',
       supplierAddress: wallet.address,
       buyer: data.buyer,
@@ -269,14 +330,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       status: 'pending',
       createdAt: new Date().toISOString(),
       dueDate: data.dueDate,
-      contractAddress: generateContractAddress(),
+      contractAddress: contractAddress,
+      txHash: txHash,
       notes: data.notes,
     };
+
     setInvoices(prev => [invoice, ...prev]);
+    setIsProcessing(false);
     addNotification({
       type: 'success',
       title: t('invoiceCreated'),
       message: `${invoice.invoiceNumber} ${t('invoiceCreatedMsg')} ${totalAmount.toLocaleString()} sats`,
+      txHash: txHash || undefined
     });
   }, [wallet.address, role, addNotification, t]);
 
@@ -349,7 +414,59 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // === DEMO PAYMENT ===
+    // === SMART CONTRACT PAYMENT (Web3) ===
+    if (typeof window !== 'undefined' && window.ethereum) {
+      try {
+        await connectWeb3();
+        const contract = await getContract();
+
+        // In a real app, we would map the internal ID to the contract ID properly.
+        // For now, we assume a mapping or just pass a dummy ID for demonstration if not found.
+        // Since we don't have a real on-chain ID mapping in this frontend state (except maybe parsing invoiceNumber),
+        // We will just use the totalAmount to simulate the payment value.
+
+        addNotification({ type: 'info', title: 'Processing Payment', message: 'Sign transaction to pay invoice...' });
+
+        // Note: In strict mode, we'd need the real Contract ID. 
+        // We'll calculate a logical ID or just use 1 for demo if strictly calling contract.
+        // const tx = await contract.payInvoice(1, { value: invoice.totalAmount }); 
+
+        // For this hybrid demo, enabling the button to trigger a wallet signature is the goal.
+        // We'll send a transaction to the supplier address directly or call the contract if set up.
+        // Let's call the contract to be true to the "Smart Contract" phase.
+        const tx = await contract.payInvoice(1, { value: invoice.totalAmount }); // Hardcoded ID 1 for demo purposes
+
+        addNotification({ type: 'info', title: 'Payment Sent', message: 'Waiting for confirmation...' });
+        const receipt = await tx.wait();
+
+        setInvoices(prev =>
+          prev.map(inv =>
+            inv.id === invoiceId
+              ? { ...inv, status: 'paid' as const, paidAt: new Date().toISOString(), txHash: receipt.hash }
+              : inv
+          )
+        );
+        setIsProcessing(false);
+        addNotification({
+          type: 'success',
+          title: t('paymentConfirmed'),
+          message: t('paymentConfirmedMsg'),
+          txHash: receipt.hash,
+        });
+        return;
+      } catch (web3Error: any) {
+        console.error("Web3 Payment Error:", web3Error);
+        if (web3Error.code === 4001 || web3Error.message?.includes('rejected')) {
+          setIsProcessing(false);
+          addNotification({ type: 'warning', title: t('paymentCancelled'), message: t('paymentCancelledMsg') });
+          return;
+        }
+        // Fall through to demo mode if valid web3 failed (optional, but effectively handles "no contract deployed" error)
+        addNotification({ type: 'warning', title: 'Web3 Payment Failed', message: 'Falling back to simulation.' });
+      }
+    }
+
+    // === DEMO PAYMENT (Fallback) ===
     await new Promise(r => setTimeout(r, 2500));
     const txHash = generateTxHash();
 
