@@ -23,8 +23,8 @@ describe("SatsProcure", function () {
     });
 
     describe("Invoicing", function () {
-        const amount = ethers.parseEther("1.0"); // 1 ETH/BTC
-        const dueDate = Math.floor(Date.now() / 1000) + 86400; // Tomorrow
+        const amount = ethers.parseEther("1.0");
+        const dueDate = Math.floor(Date.now() / 1000) + 86400;
 
         it("Should create a new invoice", async function () {
             await satsProcure.connect(supplier).createInvoice(
@@ -41,12 +41,12 @@ describe("SatsProcure", function () {
             expect(invoice.buyer).to.equal(buyer.address);
             expect(invoice.amount).to.equal(amount);
             expect(invoice.isPaid).to.equal(false);
+            expect(invoice.amountPaid).to.equal(0);
+            expect(invoice.amountReleased).to.equal(0);
 
-            // Verify supplier list
             const supplierInvoices = await satsProcure.connect(supplier).getMySupplierInvoices();
             expect(supplierInvoices.length).to.equal(1);
 
-            // Verify buyer list
             const buyerInvoices = await satsProcure.connect(buyer).getMyBuyerInvoices();
             expect(buyerInvoices.length).to.equal(1);
         });
@@ -72,52 +72,142 @@ describe("SatsProcure", function () {
         });
     });
 
-    describe("Payments", function () {
+    // =========================================================
+    // ESCROW + PARTIAL PAYMENTS
+    // =========================================================
+    describe("Escrow & Partial Payments", function () {
         const amount = ethers.parseEther("1.0");
         const dueDate = Math.floor(Date.now() / 1000) + 86400;
 
         beforeEach(async function () {
             await satsProcure.connect(supplier).createInvoice(
-                "INV-PAY",
+                "INV-ESCROW",
                 buyer.address,
                 amount,
                 dueDate,
-                "Pay Me"
+                "Escrow Test"
             );
         });
 
-        it("Should accept payment and transfer funds to supplier", async function () {
-            // Check supplier balance before
-            const initialBalance = await ethers.provider.getBalance(supplier.address);
+        it("Should accept partial payment and hold funds in escrow", async function () {
+            const halfAmount = ethers.parseEther("0.5");
 
-            // Pay invoice
-            await satsProcure.connect(buyer).payInvoice(1, { value: amount });
+            await satsProcure.connect(buyer).payInvoice(1, { value: halfAmount });
 
-            // Check invoice status
             const invoice = await satsProcure.getInvoice(1);
-            expect(invoice.isPaid).to.equal(true);
+            expect(invoice.amountPaid).to.equal(halfAmount);
+            expect(invoice.isPaid).to.equal(false); // Not fully paid yet
 
-            // Check supplier balance after (should increase by amount)
-            const finalBalance = await ethers.provider.getBalance(supplier.address);
-            expect(finalBalance).to.equal(initialBalance + amount);
+            // Funds should be in the contract, NOT transferred to supplier
+            const contractBalance = await ethers.provider.getBalance(await satsProcure.getAddress());
+            expect(contractBalance).to.equal(halfAmount);
         });
 
-        it("Should fail if payment amount is incorrect", async function () {
-            const wrongAmount = ethers.parseEther("0.5");
+        it("Should accept full payment in installments", async function () {
+            const part1 = ethers.parseEther("0.3");
+            const part2 = ethers.parseEther("0.3");
+            const part3 = ethers.parseEther("0.4");
+
+            await satsProcure.connect(buyer).payInvoice(1, { value: part1 });
+            let invoice = await satsProcure.getInvoice(1);
+            expect(invoice.amountPaid).to.equal(part1);
+            expect(invoice.isPaid).to.equal(false);
+
+            await satsProcure.connect(buyer).payInvoice(1, { value: part2 });
+            invoice = await satsProcure.getInvoice(1);
+            expect(invoice.amountPaid).to.equal(part1 + part2);
+            expect(invoice.isPaid).to.equal(false);
+
+            await satsProcure.connect(buyer).payInvoice(1, { value: part3 });
+            invoice = await satsProcure.getInvoice(1);
+            expect(invoice.amountPaid).to.equal(amount);
+            expect(invoice.isPaid).to.equal(true); // Now fully paid
+        });
+
+        it("Should fail if payment exceeds remaining amount", async function () {
+            const tooMuch = ethers.parseEther("1.5");
             await expect(
-                satsProcure.connect(buyer).payInvoice(1, { value: wrongAmount })
-            ).to.be.revertedWith("Incorrect payment amount");
+                satsProcure.connect(buyer).payInvoice(1, { value: tooMuch })
+            ).to.be.revertedWith("Payment exceeds remaining amount");
         });
 
-        it("Should fail if invoice is already paid", async function () {
+        it("Should fail if invoice is already fully paid", async function () {
             await satsProcure.connect(buyer).payInvoice(1, { value: amount });
             await expect(
-                satsProcure.connect(buyer).payInvoice(1, { value: amount })
-            ).to.be.revertedWith("Invoice is already paid");
+                satsProcure.connect(buyer).payInvoice(1, { value: ethers.parseEther("0.1") })
+            ).to.be.revertedWith("Invoice is already fully paid");
         });
     });
 
-    describe("Cancellation", function () {
+    // =========================================================
+    // CONFIRM RECEIPT (Release Escrow)
+    // =========================================================
+    describe("Confirm Receipt (Escrow Release)", function () {
+        const amount = ethers.parseEther("1.0");
+        const dueDate = Math.floor(Date.now() / 1000) + 86400;
+
+        beforeEach(async function () {
+            await satsProcure.connect(supplier).createInvoice(
+                "INV-CONFIRM",
+                buyer.address,
+                amount,
+                dueDate,
+                "Confirm Receipt Test"
+            );
+        });
+
+        it("Should release funds to supplier when buyer confirms", async function () {
+            // Pay full amount (held in escrow)
+            await satsProcure.connect(buyer).payInvoice(1, { value: amount });
+
+            const supplierBalanceBefore = await ethers.provider.getBalance(supplier.address);
+
+            // Buyer confirms receipt => releases funds
+            await satsProcure.connect(buyer).confirmReceipt(1);
+
+            const supplierBalanceAfter = await ethers.provider.getBalance(supplier.address);
+            expect(supplierBalanceAfter).to.equal(supplierBalanceBefore + amount);
+
+            const invoice = await satsProcure.getInvoice(1);
+            expect(invoice.amountReleased).to.equal(amount);
+        });
+
+        it("Should allow partial release after partial payment", async function () {
+            const halfAmount = ethers.parseEther("0.5");
+
+            // Pay half
+            await satsProcure.connect(buyer).payInvoice(1, { value: halfAmount });
+
+            const supplierBalanceBefore = await ethers.provider.getBalance(supplier.address);
+
+            // Confirm receipt => releases the paid half
+            await satsProcure.connect(buyer).confirmReceipt(1);
+
+            const supplierBalanceAfter = await ethers.provider.getBalance(supplier.address);
+            expect(supplierBalanceAfter).to.equal(supplierBalanceBefore + halfAmount);
+
+            const invoice = await satsProcure.getInvoice(1);
+            expect(invoice.amountReleased).to.equal(halfAmount);
+        });
+
+        it("Should NOT allow non-buyer to confirm receipt", async function () {
+            await satsProcure.connect(buyer).payInvoice(1, { value: amount });
+            await expect(
+                satsProcure.connect(supplier).confirmReceipt(1)
+            ).to.be.revertedWith("Only buyer can confirm receipt");
+        });
+
+        it("Should fail if no funds to release", async function () {
+            await expect(
+                satsProcure.connect(buyer).confirmReceipt(1)
+            ).to.be.revertedWith("No funds to release");
+        });
+    });
+
+    // =========================================================
+    // CANCELLATION (with refund)
+    // =========================================================
+    describe("Cancellation & Refund", function () {
         const amount = ethers.parseEther("1.0");
         const dueDate = Math.floor(Date.now() / 1000) + 86400;
 
@@ -131,8 +221,27 @@ describe("SatsProcure", function () {
             );
         });
 
-        it("Should allow supplier to cancel", async function () {
+        it("Should allow supplier to cancel unpaid invoice", async function () {
             await satsProcure.connect(supplier).cancelInvoice(1);
+            const invoice = await satsProcure.getInvoice(1);
+            expect(invoice.isCancelled).to.equal(true);
+        });
+
+        it("Should refund partial payment on cancellation", async function () {
+            const halfAmount = ethers.parseEther("0.5");
+
+            // Buyer pays partial
+            await satsProcure.connect(buyer).payInvoice(1, { value: halfAmount });
+
+            const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
+
+            // Supplier cancels => refund to buyer
+            await satsProcure.connect(supplier).cancelInvoice(1);
+
+            const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
+            // Buyer should get refund (minus gas from the payment tx is already spent)
+            expect(buyerBalanceAfter).to.be.greaterThan(buyerBalanceBefore);
+
             const invoice = await satsProcure.getInvoice(1);
             expect(invoice.isCancelled).to.equal(true);
         });
@@ -143,11 +252,11 @@ describe("SatsProcure", function () {
             ).to.be.revertedWith("Only supplier can cancel");
         });
 
-        it("Should NOT allow cancelling paid invoice", async function () {
+        it("Should NOT allow cancelling fully paid invoice", async function () {
             await satsProcure.connect(buyer).payInvoice(1, { value: amount });
             await expect(
                 satsProcure.connect(supplier).cancelInvoice(1)
-            ).to.be.revertedWith("Cannot cancel paid invoice");
+            ).to.be.revertedWith("Cannot cancel fully paid invoice");
         });
     });
 });

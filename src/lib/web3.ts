@@ -7,18 +7,20 @@ export const SATS_PROCURE_ABI = [
   // Write functions
   "function createInvoice(string _invoiceNumber, address _buyer, uint256 _amount, uint256 _dueDate, string _notes) public",
   "function payInvoice(uint256 _id) public payable",
+  "function confirmReceipt(uint256 _id) public",
   "function cancelInvoice(uint256 _id) public",
 
   // Read functions
-  "function getInvoice(uint256 _id) public view returns (tuple(uint256 id, string invoiceNumber, address supplier, address buyer, uint256 amount, uint256 createdAt, uint256 dueDate, string notes, bool isPaid, bool isCancelled))",
+  "function getInvoice(uint256 _id) public view returns (tuple(uint256 id, string invoiceNumber, address supplier, address buyer, uint256 amount, uint256 createdAt, uint256 dueDate, string notes, bool isPaid, bool isCancelled, uint256 amountPaid, uint256 amountReleased))",
   "function invoiceCount() public view returns (uint256)",
   "function invoiceNumberToId(string) public view returns (uint256)",
-  "function getMySupplierInvoices() public view returns (tuple(uint256 id, string invoiceNumber, address supplier, address buyer, uint256 amount, uint256 createdAt, uint256 dueDate, string notes, bool isPaid, bool isCancelled)[])",
-  "function getMyBuyerInvoices() public view returns (tuple(uint256 id, string invoiceNumber, address supplier, address buyer, uint256 amount, uint256 createdAt, uint256 dueDate, string notes, bool isPaid, bool isCancelled)[])",
+  "function getMySupplierInvoices() public view returns (tuple(uint256 id, string invoiceNumber, address supplier, address buyer, uint256 amount, uint256 createdAt, uint256 dueDate, string notes, bool isPaid, bool isCancelled, uint256 amountPaid, uint256 amountReleased)[])",
+  "function getMyBuyerInvoices() public view returns (tuple(uint256 id, string invoiceNumber, address supplier, address buyer, uint256 amount, uint256 createdAt, uint256 dueDate, string notes, bool isPaid, bool isCancelled, uint256 amountPaid, uint256 amountReleased)[])",
 
   // Events
   "event InvoiceCreated(uint256 indexed id, string invoiceNumber, address indexed supplier, address indexed buyer, uint256 amount, uint256 dueDate)",
-  "event InvoicePaid(uint256 indexed id, string invoiceNumber, address indexed payer, uint256 amount, uint256 paidAt)",
+  "event PaymentReceived(uint256 indexed id, address indexed payer, uint256 amount, uint256 totalPaid)",
+  "event FundsReleased(uint256 indexed id, address indexed supplier, uint256 amount)",
   "event InvoiceCancelled(uint256 indexed id, string invoiceNumber)"
 ];
 

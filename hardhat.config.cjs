@@ -15,7 +15,7 @@ module.exports = {
             ...(process.env.PRIVATE_KEY && process.env.PRIVATE_KEY.length === 66
                 ? { accounts: [process.env.PRIVATE_KEY] }
                 : {}),
-            gasPrice: 1000000000
+            gasPrice: 10000000000
         },
         localhost: {
             url: "http://127.0.0.1:8545",

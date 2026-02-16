@@ -10,7 +10,7 @@ import { Plus, Filter, ArrowLeft, Package, ShoppingCart, Code2, Terminal } from 
 import type { Invoice } from '@/types';
 
 export function Dashboard() {
-  const { role, setRole, payInvoice, invoices } = useApp();
+  const { role, setRole, payInvoice, confirmReceipt, invoices } = useApp();
   const { t } = useLanguage();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -39,6 +39,10 @@ export function Dashboard() {
   const handleView = (inv: Invoice) => {
     setSelectedInvoice(inv);
     setShowDetailModal(true);
+  };
+
+  const handleConfirmReceipt = async (invoiceId: string) => {
+    await confirmReceipt(invoiceId);
   };
 
   const RoleIcon = role === 'supplier' ? Package : ShoppingCart;
@@ -72,8 +76,8 @@ export function Dashboard() {
           <button
             onClick={() => setShowContractInfo(!showContractInfo)}
             className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-medium transition-all ${showContractInfo
-                ? 'border-violet-500/30 bg-violet-500/10 text-violet-400'
-                : 'border-gray-800 bg-gray-900/60 text-gray-400 hover:bg-gray-800 hover:text-white'
+              ? 'border-violet-500/30 bg-violet-500/10 text-violet-400'
+              : 'border-gray-800 bg-gray-900/60 text-gray-400 hover:bg-gray-800 hover:text-white'
               }`}
           >
             <Code2 className="h-3.5 w-3.5" />
@@ -115,20 +119,17 @@ contract SatsProcure {
         string notes;
         bool isPaid;
         bool isCancelled;
+        uint256 amountPaid;     // Escrow tracking
+        uint256 amountReleased; // Released to supplier
     }
 
     uint256 public invoiceCount;
     mapping(uint256 => Invoice) public invoices;
-    mapping(address => uint256[]) public supplierInvoices;
-    mapping(address => uint256[]) public buyerInvoices;
 
-    function createInvoice(string memory _invoiceNumber, address _buyer,
-        uint256 _amount, uint256 _dueDate, string memory _notes) public { ... }
-
-    function payInvoice(uint256 _id) public payable { ... }
-    function cancelInvoice(uint256 _id) public { ... }
-    function getMySupplierInvoices() public view returns (Invoice[] memory) { ... }
-    function getMyBuyerInvoices() public view returns (Invoice[] memory) { ... }
+    function createInvoice(...) public { ... }
+    function payInvoice(uint256 _id) public payable { ... } // Partial payments supported
+    function confirmReceipt(uint256 _id) public { ... }     // Release escrow
+    function cancelInvoice(uint256 _id) public { ... }      // Refunds partial payments
 }`}</pre>
           </div>
           <p className="mt-3 text-xs text-gray-500">
@@ -145,22 +146,22 @@ contract SatsProcure {
       {/* Filter Bar */}
       <div className="mb-4 flex items-center gap-2">
         <Filter className="h-4 w-4 text-gray-500" />
-        {(['all', 'pending', 'paid'] as const).map(f => (
+        {(['all', 'pending', 'partial', 'escrowed', 'paid'] as const).map(f => (
           <button
             key={f}
             onClick={() => setFilter(f)}
             className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-all ${filter === f
-                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                : 'text-gray-500 hover:text-gray-300 border border-transparent'
+              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+              : 'text-gray-500 hover:text-gray-300 border border-transparent'
               }`}
           >
-            {f === 'all' ? t('filterAll') : f === 'pending' ? t('filterPending') : t('filterPaid')}
+            {f === 'all' ? t('filterAll') : f === 'pending' ? t('filterPending') : f === 'partial' ? 'Partial' : f === 'escrowed' ? 'Escrowed' : t('filterPaid')}
           </button>
         ))}
       </div>
 
       {/* Invoice Table */}
-      <InvoiceTable onPay={handlePay} onView={handleView} filter={filter} />
+      <InvoiceTable onPay={handlePay} onView={handleView} onConfirmReceipt={handleConfirmReceipt} filter={filter} />
 
       {/* Modals */}
       <CreateInvoiceModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} />

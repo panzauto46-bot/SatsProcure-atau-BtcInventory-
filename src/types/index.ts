@@ -1,6 +1,6 @@
 export type UserRole = 'supplier' | 'buyer' | null;
 
-export type InvoiceStatus = 'pending' | 'paid' | 'cancelled';
+export type InvoiceStatus = 'pending' | 'partial' | 'escrowed' | 'paid' | 'cancelled';
 
 export interface InvoiceItem {
   id: string;
@@ -25,6 +25,8 @@ export interface Invoice {
   contractAddress?: string;
   dueDate: string;
   notes?: string;
+  amountPaid: number;     // in wei — total paid by buyer
+  amountReleased: number; // in wei — total released to supplier
 }
 
 export type WalletMode = 'real';

@@ -25,8 +25,14 @@ The application uniquely combines **Bitcoin wallet integration (Xverse)** for us
 
 ### 📜 Real-Time Blockchain Settlement
 - **Smart Contract:** powered by `SatsProcure.sol`.
-- **Full Lifecycle:** Create -> Pending -> Paid / Cancelled.
+- **Full Lifecycle:** Create → Pending → Partial → Escrowed → Paid / Cancelled.
 - **On-Chain Data:** All invoices are read directly from the blockchain (no local database).
+
+### 🔐 Escrow & Partial Payments *(Phase 2 — NEW!)*
+- **Escrow Mechanism:** Payment funds are held inside the smart contract until the Buyer confirms receipt of goods, protecting both parties.
+- **Partial Payments (Installments):** Buyers can pay invoices in multiple installments. A progress bar tracks payment completion.
+- **Confirm Receipt:** After full payment, the Buyer clicks "Confirm Receipt" to release escrowed funds to the Supplier.
+- **Auto-Refund on Cancel:** If a Supplier cancels an invoice with partial payments, funds are automatically refunded to the Buyer.
 
 ### 🔗 Hybrid Web3 Architecture
 - **Identity:** **Xverse Wallet** (Sats Connect) for Bitcoin-native identity.
@@ -92,37 +98,64 @@ Since testnet faucets can be unreliable, we recommend running the **Hardhat Loca
 
 1.  **Connect Wallet:** Click "Connect Wallet" (requires Xverse).
 2.  **Choose Role:** Select **Supplier** to issue invoices or **Buyer** to pay them.
-3.  **Create Invoice:** (As Supplier) Fill in details -> Click "Create Invoice".
+3.  **Create Invoice:** (As Supplier) Fill in details → Click "Create Invoice".
     *   *Watch for the new Premium Transaction Overlay while waiting for confirmation!* 💎
-4.  **Pay Invoice:** (As Buyer) Click "Pay" -> **Confirm Transaction in MetaMask**.
-5.  **Verify:** See the status change to **Paid** instantly!
+4.  **Pay Invoice:** (As Buyer) Click "Pay" → **Confirm Transaction in MetaMask**.
+    *   Supports **partial payments** — pay in installments! Status changes to `Partial`.
+    *   Once fully paid, status changes to `Escrowed` (funds held in contract).
+5.  **Confirm Receipt:** (As Buyer) After receiving goods, click **"Confirm Receipt"** to release funds to Supplier.
+    *   Status changes to `Paid` and funds are transferred to the Supplier's wallet.
+6.  **Cancel Invoice:** (As Supplier) Cancel unpaid invoices. Partial payments are **automatically refunded**.
 
 ---
 
-## �️ Roadmap
+## 🗺️ Roadmap
 
-### Phase 1: Foundation (Current)
+### Phase 1: Foundation ✅
 - [x] Hybrid Wallet Integration (Xverse + MetaMask)
 - [x] Basic Invoice Management (Create, Pay, Cancel)
 - [x] Smart Contract Deployment on Testnet/Localhost
 - [x] Premium UI/UX Design
 
-### Phase 2: Enhanced Settlement (Q2 2025)
-- [ ] **Escrow Mechanism:** Funds held in contract until Buyer confirms receipt of goods.
-- [ ] **Partial Payments:** Allow Buyers to pay invoices in installments.
-- [ ] **Mainnet Deployment:** Deploy to Midl Mainnet & Bitcoin Mainnet.
+### Phase 2: Enhanced Settlement ✅ *(Current)*
+- [x] **Escrow Mechanism:** Funds held in contract until Buyer confirms receipt of goods.
+- [x] **Partial Payments:** Allow Buyers to pay invoices in installments.
+- [x] **Confirm Receipt & Auto-Refund:** Buyer releases escrow; cancel refunds partial payments.
+- [x] **15 Comprehensive Smart Contract Tests** — all passing.
+- [ ] **Mainnet Deployment:** ⚠️ *Blocked — see note below.*
 
 ### Phase 3: Scaling & Mobile (Q3 2025)
 - [ ] **Mobile App:** Native iOS/Android app using React Native.
 - [ ] **Lightning Network:** Instant settlement for micro-transactions.
-- [ ] **reputation System:** On-chain reputation score for Suppliers based on successful deliveries.
+- [ ] **Reputation System:** On-chain reputation score for Suppliers based on successful deliveries.
 
 ---
 
-## �📄 License
+## ⚠️ Deployment Note (For Hackathon Judges)
+
+> **Mainnet/Testnet deployment is currently blocked** because the **Midl Regtest faucet** (`faucet.regtest.midl.xyz`) is experiencing downtime and returns an `Application error`. Without testnet BTC for gas fees, we cannot deploy the updated smart contract to the Midl Regtest network.
+>
+> **What we've done:**
+> - ✅ Smart contract fully implemented and tested (15/15 tests passing)
+> - ✅ Frontend fully updated with Escrow UI, Partial Payment progress bars, and Confirm Receipt flow
+> - ✅ Deployed and working on **Hardhat Localhost** (fully functional demo)
+> - ✅ Attempted deployment via both Hardhat CLI and Remix IDE — both returned `wrong gas price` or `insufficient funds` errors due to 0 BTC balance
+>
+> **To review the full demo locally:**
+> 1. Clone → `npm install`
+> 2. `npx hardhat node` (keep running)
+> 3. `npx hardhat run scripts/deploy.cjs --network localhost`
+> 4. `npm run dev` → open `http://localhost:5173`
+>
+> Once the Midl faucet is restored, deployment to Midl Regtest can be completed immediately with a single command.
+
+---
+
+## 📄 License
 
 Distributed under the MIT License.
 
 <p align="center">
   <strong>SatsProcure</strong> — Empowering B2B Commerce on the Block(chain).
 </p>
+
