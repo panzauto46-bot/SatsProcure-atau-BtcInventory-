@@ -1,4 +1,4 @@
-import { X, AlertTriangle, Zap, Bitcoin } from 'lucide-react';
+import { X, AlertTriangle, Send, Bitcoin } from 'lucide-react';
 import type { Invoice } from '@/types';
 import { useApp } from '@/context/AppContext';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -34,7 +34,7 @@ export function PayConfirmModal({ invoice, isOpen, onClose, onConfirm }: Props) 
             <div>
               <p className="text-sm font-semibold text-amber-400">{t('onChainTransaction')}</p>
               <p className="mt-1 text-xs text-gray-400">
-                {t('onChainWarning')} <code className="font-mono text-amber-400">{t('onChainWarningFunc')}</code> {t('onChainWarningSuffix')} <strong className="text-white">{t('irreversible')}</strong>.
+                {t('onChainWarning')} <strong className="text-white">{t('irreversible')}</strong>. <code className="font-mono text-amber-400">{t('onChainWarningFunc')}</code>
               </p>
             </div>
           </div>
@@ -71,7 +71,7 @@ export function PayConfirmModal({ invoice, isOpen, onClose, onConfirm }: Props) 
                 <span className="text-gray-400">{t('xverseSign')}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Zap className="h-3.5 w-3.5 text-emerald-400" />
+                <Send className="h-3.5 w-3.5 text-emerald-400" />
                 <span className="text-gray-400">{t('midlExecute')}</span>
               </div>
               <div className="flex items-center gap-2">

@@ -6,7 +6,7 @@ import { InvoiceTable } from './InvoiceTable';
 import { CreateInvoiceModal } from './CreateInvoiceModal';
 import { InvoiceDetailModal } from './InvoiceDetailModal';
 import { PayConfirmModal } from './PayConfirmModal';
-import { Plus, Filter, ArrowLeft, Package, ShoppingCart, Code2, Terminal } from 'lucide-react';
+import { Plus, Filter, ArrowLeft, Package, ShoppingCart, Code2, Bitcoin } from 'lucide-react';
 import type { Invoice } from '@/types';
 
 export function Dashboard() {
@@ -96,44 +96,34 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Smart Contract Info Panel */}
+      {/* Bitcoin Architecture Info Panel */}
       {showContractInfo && (
-        <div className="mb-6 rounded-xl border border-violet-500/20 bg-violet-500/5 p-5">
+        <div className="mb-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-5">
           <div className="flex items-center gap-2 mb-3">
-            <Terminal className="h-4 w-4 text-violet-400" />
-            <h3 className="text-sm font-bold text-violet-400">{t('solidityContract')}</h3>
+            <Bitcoin className="h-4 w-4 text-amber-400" />
+            <h3 className="text-sm font-bold text-amber-400">{t('solidityContract')}</h3>
           </div>
           <div className="rounded-lg bg-gray-950/80 p-4 font-mono text-xs text-gray-300 overflow-x-auto">
-            <pre className="whitespace-pre-wrap leading-relaxed">{`// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+            <pre className="whitespace-pre-wrap leading-relaxed">{`// Bitcoin Native Payment Flow (sats-connect)
+// ─────────────────────────────────────────
 
-contract SatsProcure {
-    struct Invoice {
-        uint256 id;
-        string invoiceNumber;
-        address payable supplier;
-        address buyer;
-        uint256 amount;
-        uint256 createdAt;
-        uint256 dueDate;
-        string notes;
-        bool isPaid;
-        bool isCancelled;
-        uint256 amountPaid;     // Escrow tracking
-        uint256 amountReleased; // Released to supplier
-    }
+1. Supplier creates invoice (off-chain)
+   → Invoice stored locally with buyer's BTC address
 
-    uint256 public invoiceCount;
-    mapping(uint256 => Invoice) public invoices;
+2. Buyer pays invoice (on-chain BTC transfer)
+   → sats-connect.sendTransfer()
+   → Xverse wallet signs & broadcasts tx
+   → Real tBTC sent from buyer → supplier
 
-    function createInvoice(...) public { ... }
-    function payInvoice(uint256 _id) public payable { ... } // Partial payments supported
-    function confirmReceipt(uint256 _id) public { ... }     // Release escrow
-    function cancelInvoice(uint256 _id) public { ... }      // Refunds partial payments
-}`}</pre>
+3. Buyer confirms receipt
+   → Marks invoice as settled
+
+// Network: Bitcoin Testnet
+// Wallet:  Xverse (sats-connect v4)
+// Method:  Native BTC transfer (P2WPKH/P2TR)`}</pre>
           </div>
           <p className="mt-3 text-xs text-gray-500">
-            {t('contractDesc')} <span className="text-violet-400 font-semibold">{t('contractDescMidlSDK')}</span> {t('contractDescAnd')} <span className="text-violet-400 font-semibold">{t('contractDescMidlRPC')}</span>{t('contractDescSuffix')}
+            {t('contractDesc')} <span className="text-amber-400 font-semibold">{t('contractDescMidlSDK')}</span> {t('contractDescAnd')} <span className="text-amber-400 font-semibold">{t('contractDescMidlRPC')}</span>{t('contractDescSuffix')}
           </p>
         </div>
       )}

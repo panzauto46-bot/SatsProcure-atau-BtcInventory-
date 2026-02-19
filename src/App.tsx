@@ -5,7 +5,7 @@ import { RoleSelector } from '@/components/RoleSelector';
 import { Dashboard } from '@/components/Dashboard';
 import { Notifications } from '@/components/Notifications';
 import { TransactionOverlay } from '@/components/TransactionOverlay';
-import { TARGET_NETWORK } from '@/lib/web3';
+
 
 function AppContent() {
   const { role, wallet } = useApp();
@@ -52,7 +52,7 @@ function AppContent() {
             <div className="flex items-center gap-4 text-xs text-gray-500">
               <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                <span className="font-medium text-emerald-500">{TARGET_NETWORK.chainName}</span>
+                <span className="font-medium text-emerald-500">Bitcoin Testnet</span>
               </div>
               <span className="text-gray-600">v1.0.0 (Hackathon Build)</span>
             </div>

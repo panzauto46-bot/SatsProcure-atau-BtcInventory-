@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import type { Invoice, WalletState, Notification, UserRole, InvoiceItem } from '@/types';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -7,18 +7,8 @@ import {
   connectXverse,
   getXverseBalance,
   disconnectXverse,
+  sendXverseTransfer,
 } from '@/lib/xverse';
-import {
-  getContract,
-  connectWallet as connectWeb3,
-  isContractDeployed,
-} from '@/lib/web3';
-
-declare global {
-  interface Window {
-    ethereum?: any;
-  }
-}
 
 interface AppContextType {
   wallet: WalletState;
@@ -57,7 +47,7 @@ const INITIAL_WALLET: WalletState = {
   address: '',
   publicKey: '',
   balance: 0,
-  network: 'Midl Testnet',
+  network: 'Testnet',
   mode: 'real',
 };
 
@@ -86,66 +76,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ============================================================
-  // Load Invoices from Blockchain
+  // Load Invoices (local state only — no on-chain contract)
   // ============================================================
   const loadInvoicesFromChain = useCallback(async () => {
-    if (!isContractDeployed()) return;
-
-    try {
-      const contract = await getContract();
-      const countBN = await contract.invoiceCount();
-      const count = Number(countBN);
-
-      if (count === 0) {
-        setInvoices([]);
-        return;
-      }
-
-      const loaded: Invoice[] = [];
-      for (let i = 1; i <= count; i++) {
-        const inv = await contract.getInvoice(i);
-        const amountPaid = Number(inv.amountPaid);
-        const amountReleased = Number(inv.amountReleased);
-        const totalAmount = Number(inv.amount);
-
-        // Determine rich status
-        let status: Invoice['status'] = 'pending';
-        if (inv.isCancelled) {
-          status = 'cancelled';
-        } else if (inv.isPaid && amountReleased >= totalAmount) {
-          status = 'paid';       // Fully paid AND released
-        } else if (inv.isPaid) {
-          status = 'escrowed';   // Fully paid, awaiting buyer confirmation
-        } else if (amountPaid > 0) {
-          status = 'partial';    // Partially paid
-        }
-
-        loaded.push({
-          id: inv.id.toString(),
-          invoiceNumber: inv.invoiceNumber,
-          supplier: inv.supplier,
-          supplierAddress: inv.supplier,
-          buyer: inv.buyer,
-          buyerAddress: inv.buyer,
-          items: [],
-          totalAmount,
-          status,
-          createdAt: new Date(Number(inv.createdAt) * 1000).toISOString(),
-          paidAt: inv.isPaid ? new Date().toISOString() : undefined,
-          dueDate: new Date(Number(inv.dueDate) * 1000).toISOString(),
-          notes: inv.notes,
-          amountPaid,
-          amountReleased,
-        });
-      }
-      setInvoices(loaded);
-    } catch (err) {
-      console.error('Failed to load invoices from chain:', err);
-    }
+    // No-op: invoices are managed locally until Bitcoin-native integration is ready
   }, []);
 
   // ============================================================
-  // Connect Wallet (Real Xverse Only)
+  // Connect Wallet (Xverse Only)
   // ============================================================
   const connectWallet = useCallback(async () => {
     setIsProcessing(true);
@@ -223,7 +161,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [addNotification, t]);
 
   // ============================================================
-  // Create Invoice (On-Chain via Smart Contract)
+  // Create Invoice (Local — no EVM contract)
   // ============================================================
   const createInvoice = useCallback(async (data: {
     buyer: string;
@@ -236,94 +174,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const totalAmount = data.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
     const invoiceNumber = generateInvoiceNumber();
 
-    if (!isContractDeployed()) {
-      setIsProcessing(false);
-      addNotification({
-        type: 'error',
-        title: 'Contract Not Deployed',
-        message: 'The smart contract has not been deployed yet. Please deploy the contract first.',
-      });
-      return;
-    }
+    const invoice: Invoice = {
+      id: uuidv4(),
+      invoiceNumber,
+      supplier: wallet.address || 'You',
+      supplierAddress: wallet.address,
+      buyer: data.buyer,
+      buyerAddress: data.buyerAddress,
+      items: data.items,
+      totalAmount,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      dueDate: data.dueDate,
+      notes: data.notes,
+      amountPaid: 0,
+      amountReleased: 0,
+    };
 
-    try {
-      // Connect to EVM (MetaMask) for signing
-      await connectWeb3();
-      const contract = await getContract();
-
-      const dueTimestamp = Math.floor(new Date(data.dueDate).getTime() / 1000);
-
-      addNotification({
-        type: 'info',
-        title: t('deployingContract'),
-        message: 'Sign the transaction in MetaMask...',
-      });
-
-      const tx = await contract.createInvoice(
-        invoiceNumber,
-        data.buyerAddress,
-        totalAmount,
-        dueTimestamp,
-        data.notes || ''
-      );
-
-      addNotification({
-        type: 'info',
-        title: 'Transaction Sent',
-        message: 'Waiting for on-chain confirmation...',
-      });
-
-      const receipt = await tx.wait();
-      const txHash = receipt ? receipt.hash : '';
-
-      // Add to local state immediately
-      const invoice: Invoice = {
-        id: uuidv4(),
-        invoiceNumber,
-        supplier: wallet.address || 'You',
-        supplierAddress: wallet.address,
-        buyer: data.buyer,
-        buyerAddress: data.buyerAddress,
-        items: data.items,
-        totalAmount,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-        dueDate: data.dueDate,
-        txHash,
-        notes: data.notes,
-        amountPaid: 0,
-        amountReleased: 0,
-      };
-
-      setInvoices(prev => [invoice, ...prev]);
-      setIsProcessing(false);
-      addNotification({
-        type: 'success',
-        title: t('invoiceCreated'),
-        message: `${invoice.invoiceNumber} — ${totalAmount.toLocaleString()} sats recorded on-chain`,
-        txHash,
-      });
-    } catch (err: any) {
-      setIsProcessing(false);
-      if (err.code === 4001 || err.message?.includes('rejected')) {
-        addNotification({
-          type: 'warning',
-          title: 'Transaction Rejected',
-          message: 'You rejected the transaction in your wallet.',
-        });
-      } else {
-        console.error('Create invoice error:', err);
-        addNotification({
-          type: 'error',
-          title: 'Transaction Failed',
-          message: err.message || 'Failed to create invoice on-chain.',
-        });
-      }
-    }
+    setInvoices(prev => [invoice, ...prev]);
+    setIsProcessing(false);
+    addNotification({
+      type: 'success',
+      title: t('invoiceCreated'),
+      message: `${invoice.invoiceNumber} — ${totalAmount.toLocaleString()} sats`,
+    });
   }, [wallet.address, addNotification, t]);
 
   // ============================================================
-  // Pay Invoice (On-Chain via Smart Contract)
+  // Pay Invoice (Send BTC via Xverse / sats-connect)
   // ============================================================
   const payInvoice = useCallback(async (invoiceId: string, partialAmount?: number) => {
     const invoice = invoices.find(i => i.id === invoiceId);
@@ -331,39 +209,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     setIsProcessing(true);
 
-    if (!isContractDeployed()) {
-      setIsProcessing(false);
-      addNotification({
-        type: 'error',
-        title: 'Contract Not Deployed',
-        message: 'Cannot pay — smart contract not deployed yet.',
-      });
-      return;
-    }
+    const payAmount = partialAmount ?? (invoice.totalAmount - invoice.amountPaid);
+
+    addNotification({
+      type: 'info',
+      title: t('processingPayment'),
+      message: `Sending ${payAmount.toLocaleString()} sats — confirm in Xverse...`,
+    });
 
     try {
-      await connectWeb3();
-      const contract = await getContract();
-
-      // Determine payment amount: partial or remaining full
-      const payAmount = partialAmount ?? (invoice.totalAmount - invoice.amountPaid);
-
-      addNotification({
-        type: 'info',
-        title: t('processingPayment'),
-        message: `Paying ${payAmount.toLocaleString()} sats — sign in MetaMask...`,
-      });
-
-      const onChainId = await contract.invoiceNumberToId(invoice.invoiceNumber);
-      const tx = await contract.payInvoice(onChainId, { value: payAmount });
-
-      addNotification({
-        type: 'info',
-        title: 'Payment Sent',
-        message: 'Waiting for on-chain confirmation...',
-      });
-
-      const receipt = await tx.wait();
+      const result = await sendXverseTransfer(invoice.supplierAddress, payAmount);
 
       const newAmountPaid = invoice.amountPaid + payAmount;
       const fullyPaid = newAmountPaid >= invoice.totalAmount;
@@ -375,24 +230,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
               ...inv,
               amountPaid: newAmountPaid,
               status: fullyPaid ? 'escrowed' as const : 'partial' as const,
-              txHash: receipt.hash,
+              txHash: result.txid,
             }
             : inv
         )
       );
 
+      // Refresh balance after payment
+      try {
+        const bal = await getXverseBalance();
+        setWallet(prev => ({ ...prev, balance: bal.total }));
+      } catch {
+        // Balance refresh can fail on testnet
+      }
+
       setIsProcessing(false);
       addNotification({
         type: 'success',
-        title: fullyPaid ? 'Fully Paid (In Escrow)' : 'Partial Payment Received',
+        title: fullyPaid ? 'Fully Paid' : 'Partial Payment Sent',
         message: fullyPaid
-          ? `Invoice fully paid! Funds held in escrow until buyer confirms receipt.`
-          : `Installment of ${payAmount.toLocaleString()} sats received. ${(invoice.totalAmount - newAmountPaid).toLocaleString()} sats remaining.`,
-        txHash: receipt.hash,
+          ? `Invoice fully paid! ${payAmount.toLocaleString()} sats sent to supplier.`
+          : `Installment of ${payAmount.toLocaleString()} sats sent. ${(invoice.totalAmount - newAmountPaid).toLocaleString()} sats remaining.`,
+        txHash: result.txid,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       setIsProcessing(false);
-      if (err.code === 4001 || err.message?.includes('rejected')) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      if (message === 'USER_REJECTED') {
         addNotification({
           type: 'warning',
           title: t('paymentCancelled'),
@@ -403,14 +267,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addNotification({
           type: 'error',
           title: t('paymentFailed'),
-          message: err.message || t('paymentFailedMsg'),
+          message: message || t('paymentFailedMsg'),
         });
       }
     }
   }, [invoices, addNotification, t]);
 
   // ============================================================
-  // Confirm Receipt (Release Escrow to Supplier)
+  // Confirm Receipt (Local — release escrow)
   // ============================================================
   const confirmReceipt = useCallback(async (invoiceId: string) => {
     const invoice = invoices.find(i => i.id === invoiceId);
@@ -418,73 +282,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     setIsProcessing(true);
 
-    try {
-      await connectWeb3();
-      const contract = await getContract();
+    setInvoices(prev =>
+      prev.map(inv =>
+        inv.id === invoiceId
+          ? {
+            ...inv,
+            status: 'paid' as const,
+            amountReleased: inv.amountPaid,
+            paidAt: new Date().toISOString(),
+          }
+          : inv
+      )
+    );
 
-      addNotification({
-        type: 'info',
-        title: 'Confirming Receipt',
-        message: 'Sign the transaction to release funds to the supplier...',
-      });
-
-      const onChainId = await contract.invoiceNumberToId(invoice.invoiceNumber);
-      const tx = await contract.confirmReceipt(onChainId);
-
-      addNotification({
-        type: 'info',
-        title: 'Transaction Sent',
-        message: 'Waiting for on-chain confirmation...',
-      });
-
-      const receipt = await tx.wait();
-
-      setInvoices(prev =>
-        prev.map(inv =>
-          inv.id === invoiceId
-            ? {
-              ...inv,
-              status: 'paid' as const,
-              amountReleased: inv.amountPaid,
-              paidAt: new Date().toISOString(),
-              txHash: receipt.hash,
-            }
-            : inv
-        )
-      );
-
-      setIsProcessing(false);
-      addNotification({
-        type: 'success',
-        title: 'Funds Released!',
-        message: `Escrow released — supplier has received ${invoice.amountPaid.toLocaleString()} sats.`,
-        txHash: receipt.hash,
-      });
-    } catch (err: any) {
-      setIsProcessing(false);
-      if (err.code === 4001 || err.message?.includes('rejected')) {
-        addNotification({
-          type: 'warning',
-          title: 'Transaction Cancelled',
-          message: 'You rejected the confirm receipt transaction.',
-        });
-      } else {
-        console.error('Confirm receipt error:', err);
-        addNotification({
-          type: 'error',
-          title: 'Confirm Receipt Failed',
-          message: err.message || 'Failed to release escrow funds.',
-        });
-      }
-    }
+    setIsProcessing(false);
+    addNotification({
+      type: 'success',
+      title: 'Funds Released!',
+      message: `Escrow released — supplier has received ${invoice.amountPaid.toLocaleString()} sats.`,
+    });
   }, [invoices, addNotification]);
-
-  // Load invoices when wallet connects
-  useEffect(() => {
-    if (wallet.connected && isContractDeployed()) {
-      loadInvoicesFromChain();
-    }
-  }, [wallet.connected, loadInvoicesFromChain]);
 
   return (
     <AppContext.Provider
