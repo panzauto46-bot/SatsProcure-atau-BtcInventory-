@@ -9,6 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@midl/connectors": "^3.0.3",
+    "@midl/core": "^3.0.3",
+    "@midl/executor": "^3.0.3",
+    "@midl/executor-react": "^3.0.3",
+    "@midl/react": "^3.0.3",
+    "@tanstack/react-query": "^5.90.21",
     "@types/uuid": "^10.0.0",
     "clsx": "2.1.1",
     "lucide-react": "^0.564.0",
@@ -16,7 +22,12 @@
     "react-dom": "19.2.3",
     "sats-connect": "^4.2.1",
     "tailwind-merge": "3.4.0",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "viem": "npm:@midl/viem",
+    "wagmi": "^2.14.16"
+  },
+  "overrides": {
+    "viem": "npm:@midl/viem"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.1.17",

@@ -1,4 +1,4 @@
-import { X, Clock, CheckCircle2, XCircle, Copy, FileText, CreditCard } from 'lucide-react';
+import { X, Clock, CheckCircle2, XCircle, Copy, FileText, CreditCard, ExternalLink } from 'lucide-react';
 import type { Invoice } from '@/types';
 import { useApp } from '@/context/AppContext';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -20,13 +20,15 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onPay }: Props) {
   if (!isOpen || !invoice) return null;
 
   const copyToClipboard = (text: string, field: string) => {
-    navigator.clipboard.writeText(text).catch(() => {});
+    navigator.clipboard.writeText(text).catch(() => { });
     setCopiedField(field);
     setTimeout(() => setCopiedField(null), 2000);
   };
 
   const statusConfig = {
     pending: { icon: Clock, text: t('pendingPayment'), cls: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
+    partial: { icon: Clock, text: 'Partial Payment', cls: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+    escrowed: { icon: Clock, text: 'Escrowed', cls: 'bg-violet-500/10 text-violet-400 border-violet-500/20' },
     paid: { icon: CheckCircle2, text: t('paidSettled'), cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
     cancelled: { icon: XCircle, text: t('cancelled'), cls: 'bg-red-500/10 text-red-400 border-red-500/20' },
   }[invoice.status] || { icon: Clock, text: invoice.status, cls: 'bg-gray-500/10 text-gray-400 border-gray-500/20' };
@@ -110,13 +112,30 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onPay }: Props) {
 
           {/* On-Chain Info */}
           {(invoice.contractAddress || invoice.txHash) && (
-            <div className="rounded-xl border border-gray-800/50 bg-gray-900/40 p-4 space-y-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{t('onChainData')}</p>
+            <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-violet-400">{t('onChainData')}</p>
+                <a
+                  href="https://blockscout.regtest.midl.xyz"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-[10px] text-violet-400 hover:text-violet-300"
+                >
+                  Blockscout <ExternalLink className="h-2.5 w-2.5" />
+                </a>
+              </div>
               {invoice.contractAddress && (
                 <div>
                   <p className="mb-1 text-[10px] text-gray-500">{t('contractAddress')}</p>
                   <div className="flex items-center gap-2">
-                    <p className="font-mono text-xs text-gray-400 break-all flex-1">{invoice.contractAddress}</p>
+                    <a
+                      href={`https://blockscout.regtest.midl.xyz/address/${invoice.contractAddress}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-xs text-violet-400 hover:text-violet-300 break-all flex-1 underline decoration-violet-400/30"
+                    >
+                      {invoice.contractAddress}
+                    </a>
                     <button onClick={() => copyToClipboard(invoice.contractAddress!, 'contract')} className="flex-shrink-0 text-gray-600 hover:text-gray-300">
                       <Copy className="h-3.5 w-3.5" />
                     </button>
@@ -128,7 +147,14 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onPay }: Props) {
                 <div>
                   <p className="mb-1 text-[10px] text-gray-500">{t('transactionHash')}</p>
                   <div className="flex items-center gap-2">
-                    <p className="font-mono text-xs text-emerald-400 break-all flex-1">{invoice.txHash}</p>
+                    <a
+                      href={`https://blockscout.regtest.midl.xyz/tx/${invoice.txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-xs text-emerald-400 hover:text-emerald-300 break-all flex-1 underline decoration-emerald-400/30"
+                    >
+                      {invoice.txHash}
+                    </a>
                     <button onClick={() => copyToClipboard(invoice.txHash!, 'tx')} className="flex-shrink-0 text-gray-600 hover:text-gray-300">
                       <Copy className="h-3.5 w-3.5" />
                     </button>

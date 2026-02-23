@@ -15,4 +15,11 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),
     },
   },
+  define: {
+    // Required for some web3 libraries
+    global: "globalThis",
+  },
+  build: {
+    target: "esnext",
+  },
 });

@@ -6,6 +6,14 @@ import { Dashboard } from '@/components/Dashboard';
 import { Notifications } from '@/components/Notifications';
 import { TransactionOverlay } from '@/components/TransactionOverlay';
 
+// Midl SDK Providers
+import { MidlProvider } from '@midl/react';
+import { WagmiMidlProvider } from '@midl/executor-react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { midlConfig } from '@/lib/midlConfig';
+
+const queryClient = new QueryClient();
+
 
 function AppContent() {
   const { role, wallet } = useApp();
@@ -50,11 +58,19 @@ function AppContent() {
               <span>{t('decentralizedB2B')}</span>
             </div>
             <div className="flex items-center gap-4 text-xs text-gray-500">
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                <span className="font-medium text-emerald-500">Bitcoin Testnet</span>
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-violet-500/10 border border-violet-500/20">
+                <span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse shadow-[0_0_8px_rgba(139,92,246,0.5)]" />
+                <span className="font-medium text-violet-400">Midl Regtest</span>
               </div>
-              <span className="text-gray-600">v1.0.0 (Hackathon Build)</span>
+              <a
+                href="https://blockscout.regtest.midl.xyz"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-500 hover:text-violet-400 transition-colors"
+              >
+                Block Explorer ↗
+              </a>
+              <span className="text-gray-600">v2.0.0 (Midl VibeHack)</span>
             </div>
           </div>
         </div>
@@ -73,8 +89,14 @@ function AppWithProvider() {
 
 export function App() {
   return (
-    <LanguageProvider>
-      <AppWithProvider />
-    </LanguageProvider>
+    <MidlProvider config={midlConfig}>
+      <QueryClientProvider client={queryClient}>
+        <WagmiMidlProvider>
+          <LanguageProvider>
+            <AppWithProvider />
+          </LanguageProvider>
+        </WagmiMidlProvider>
+      </QueryClientProvider>
+    </MidlProvider>
   );
 }

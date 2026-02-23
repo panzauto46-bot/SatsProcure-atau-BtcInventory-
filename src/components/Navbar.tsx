@@ -70,8 +70,8 @@ export function Navbar() {
                 <button
                   onClick={() => { setLang('en'); setShowLangDropdown(false); }}
                   className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${lang === 'en'
-                      ? 'bg-amber-500/10 text-amber-400'
-                      : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                    ? 'bg-amber-500/10 text-amber-400'
+                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                     }`}
                 >
                   <span className="text-base">🇺🇸</span>
@@ -81,8 +81,8 @@ export function Navbar() {
                 <button
                   onClick={() => { setLang('id'); setShowLangDropdown(false); }}
                   className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${lang === 'id'
-                      ? 'bg-amber-500/10 text-amber-400'
-                      : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                    ? 'bg-amber-500/10 text-amber-400'
+                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                     }`}
                 >
                   <span className="text-base">🇮🇩</span>
@@ -95,8 +95,8 @@ export function Navbar() {
 
           {/* Network indicator */}
           <div className="hidden sm:flex items-center gap-2 rounded-full bg-gray-800/60 px-3 py-1.5 text-xs font-medium text-gray-400 border border-gray-700/50">
-            <Zap className="h-3 w-3 text-emerald-400" />
-            <span className="text-emerald-400">{t('midlTestnet')}</span>
+            <Zap className="h-3 w-3 text-violet-400" />
+            <span className="text-violet-400">{t('midlTestnet')}</span>
           </div>
 
           {/* Connect / Wallet Button */}

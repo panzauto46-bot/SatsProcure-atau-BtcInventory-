@@ -1,4 +1,4 @@
-import { X, AlertTriangle, Send, Bitcoin } from 'lucide-react';
+import { X, AlertTriangle, Bitcoin, Code2 } from 'lucide-react';
 import type { Invoice } from '@/types';
 import { useApp } from '@/context/AppContext';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -71,7 +71,7 @@ export function PayConfirmModal({ invoice, isOpen, onClose, onConfirm }: Props) 
                 <span className="text-gray-400">{t('xverseSign')}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Send className="h-3.5 w-3.5 text-emerald-400" />
+                <Code2 className="h-3.5 w-3.5 text-violet-400" />
                 <span className="text-gray-400">{t('midlExecute')}</span>
               </div>
               <div className="flex items-center gap-2">

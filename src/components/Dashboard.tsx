@@ -6,11 +6,13 @@ import { InvoiceTable } from './InvoiceTable';
 import { CreateInvoiceModal } from './CreateInvoiceModal';
 import { InvoiceDetailModal } from './InvoiceDetailModal';
 import { PayConfirmModal } from './PayConfirmModal';
-import { Plus, Filter, ArrowLeft, Package, ShoppingCart, Code2, Bitcoin } from 'lucide-react';
+import { Plus, Filter, ArrowLeft, Package, ShoppingCart, Code2, Bitcoin, ExternalLink, Copy } from 'lucide-react';
 import type { Invoice } from '@/types';
+import { SATSPROCURE_CONTRACT } from '@/lib/contract';
+import { getMidlContractUrl } from '@/lib/midlConfig';
 
 export function Dashboard() {
-  const { role, setRole, payInvoice, confirmReceipt, invoices } = useApp();
+  const { role, setRole, payInvoice, confirmReceipt, invoices, contractAddress, midlExplorerUrl } = useApp();
   const { t } = useLanguage();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -19,6 +21,7 @@ export function Dashboard() {
   const [showPayConfirm, setShowPayConfirm] = useState(false);
   const [filter, setFilter] = useState('all');
   const [showContractInfo, setShowContractInfo] = useState(false);
+  const [copiedContract, setCopiedContract] = useState(false);
 
   const handlePay = (invoiceId: string) => {
     const inv = invoices.find(i => i.id === invoiceId);
@@ -43,6 +46,12 @@ export function Dashboard() {
 
   const handleConfirmReceipt = async (invoiceId: string) => {
     await confirmReceipt(invoiceId);
+  };
+
+  const copyContractAddr = () => {
+    navigator.clipboard.writeText(contractAddress).catch(() => { });
+    setCopiedContract(true);
+    setTimeout(() => setCopiedContract(false), 2000);
   };
 
   const RoleIcon = role === 'supplier' ? Package : ShoppingCart;
@@ -96,35 +105,81 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Bitcoin Architecture Info Panel */}
+      {/* Midl Smart Contract Architecture Panel */}
       {showContractInfo && (
-        <div className="mb-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Bitcoin className="h-4 w-4 text-amber-400" />
-            <h3 className="text-sm font-bold text-amber-400">{t('solidityContract')}</h3>
+        <div className="mb-6 rounded-xl border border-violet-500/20 bg-violet-500/5 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-purple-600">
+                <Code2 className="h-4 w-4 text-white" />
+              </div>
+              <h3 className="text-sm font-bold text-violet-400">{t('solidityContract')}</h3>
+            </div>
+            <a
+              href={getMidlContractUrl(contractAddress)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-300 transition-colors"
+            >
+              <span>View on Explorer</span>
+              <ExternalLink className="h-3 w-3" />
+            </a>
           </div>
+
+          {/* Contract Address */}
+          <div className="mb-4 flex items-center gap-2 rounded-lg bg-gray-950/80 px-4 py-3">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Contract:</span>
+            <code className="font-mono text-xs text-violet-400 flex-1 break-all">{contractAddress}</code>
+            <button onClick={copyContractAddr} className="text-gray-500 hover:text-violet-400 transition-colors">
+              <Copy className="h-3.5 w-3.5" />
+            </button>
+            {copiedContract && <span className="text-[10px] text-emerald-400">Copied!</span>}
+          </div>
+
+          {/* Architecture Diagram */}
           <div className="rounded-lg bg-gray-950/80 p-4 font-mono text-xs text-gray-300 overflow-x-auto">
-            <pre className="whitespace-pre-wrap leading-relaxed">{`// Bitcoin Native Payment Flow (sats-connect)
-// ─────────────────────────────────────────
+            <pre className="whitespace-pre-wrap leading-relaxed">{`// Midl Smart Contract Architecture (Solidity on Bitcoin)
+// ──────────────────────────────────────────────────────
 
-1. Supplier creates invoice (off-chain)
-   → Invoice stored locally with buyer's BTC address
+1. Frontend (React + TypeScript)
+   ├── User Action (Create Invoice / Pay / Confirm)
+   └── Encodes Solidity function call via encodeFunctionData()
 
-2. Buyer pays invoice (on-chain BTC transfer)
-   → sats-connect.sendTransfer()
-   → Xverse wallet signs & broadcasts tx
-   → Real tBTC sent from buyer → supplier
+2. Midl SDK (@midl/executor)
+   ├── addTxIntention() → Queue EVM transaction
+   ├── finalizeBTCTransaction() → Calculate BTC costs
+   ├── signIntention() → Xverse wallet signs
+   └── broadcastTransaction() → Send to Midl network
 
-3. Buyer confirms receipt
-   → Marks invoice as settled
+3. Midl Regtest (Bitcoin EVM Layer)
+   ├── Smart Contract: SatsProcure.sol
+   │   ├── createInvoice(id, buyer, amount, number)
+   │   ├── payInvoice(id, amount) 
+   │   ├── confirmReceipt(id)
+   │   └── cancelInvoice(id)
+   └── Events emitted → Indexed on Blockscout
 
-// Network: Bitcoin Testnet
-// Wallet:  Xverse (sats-connect v4)
-// Method:  Native BTC transfer (P2WPKH/P2TR)`}</pre>
+4. On-Chain Verification
+   └── TX Hash → blockscout.regtest.midl.xyz/tx/{hash}
+
+// Network:  Midl Regtest (Bitcoin EVM)
+// Wallet:   Xverse (sats-connect + @midl/connectors)
+// Contract: SatsProcure.sol (Solidity ^0.8.28)`}</pre>
           </div>
-          <p className="mt-3 text-xs text-gray-500">
-            {t('contractDesc')} <span className="text-amber-400 font-semibold">{t('contractDescMidlSDK')}</span> {t('contractDescAnd')} <span className="text-amber-400 font-semibold">{t('contractDescMidlRPC')}</span>{t('contractDescSuffix')}
-          </p>
+          <div className="mt-3 flex items-center gap-4">
+            <p className="flex-1 text-xs text-gray-500">
+              {t('contractDesc')} <span className="text-violet-400 font-semibold">{t('contractDescMidlSDK')}</span> {t('contractDescAnd')} <span className="text-violet-400 font-semibold">{t('contractDescMidlRPC')}</span>{t('contractDescSuffix')}
+            </p>
+            <a
+              href={midlExplorerUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 rounded-lg bg-violet-500/10 border border-violet-500/20 px-3 py-1.5 text-[10px] font-semibold text-violet-400 hover:bg-violet-500/20 transition-colors whitespace-nowrap"
+            >
+              <Bitcoin className="h-3 w-3" />
+              Blockscout Explorer ↗
+            </a>
+          </div>
         </div>
       )}
 
