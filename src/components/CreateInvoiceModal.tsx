@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { isAddress } from 'viem';
 import { useApp } from '@/context/AppContext';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { X, Plus, Trash2, FileText, Send } from 'lucide-react';
@@ -11,7 +12,7 @@ interface Props {
 }
 
 export function CreateInvoiceModal({ isOpen, onClose }: Props) {
-  const { createInvoice } = useApp();
+  const { createInvoice, connectedEvmAddress } = useApp();
   const { t } = useLanguage();
   const [buyer, setBuyer] = useState('');
   const [buyerAddress, setBuyerAddress] = useState('');
@@ -37,13 +38,22 @@ export function CreateInvoiceModal({ isOpen, onClose }: Props) {
   };
 
   const totalAmount = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+  const canAutoFillEvmAddress =
+    isAddress(connectedEvmAddress) &&
+    connectedEvmAddress !== '0x0000000000000000000000000000000000000000';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!buyer || !buyerAddress || !dueDate || items.some(i => !i.name || i.unitPrice <= 0 || i.quantity <= 0)) return;
     setIsSubmitting(true);
     try {
-      await createInvoice({ buyer, buyerAddress, items, dueDate, notes: notes || undefined });
+      await createInvoice({
+        buyer: buyer.trim(),
+        buyerAddress: buyerAddress.trim(),
+        items,
+        dueDate,
+        notes: notes || undefined,
+      });
       setBuyer('');
       setBuyerAddress('');
       setDueDate('');
@@ -107,11 +117,25 @@ export function CreateInvoiceModal({ isOpen, onClose }: Props) {
                 type="text"
                 value={buyerAddress}
                 onChange={e => setBuyerAddress(e.target.value)}
-                placeholder="0x..."
-                pattern="0x[a-fA-F0-9]{40}"
+                placeholder="0x... or connected bcrt1..."
                 required
                 className="w-full rounded-xl border border-gray-800 bg-gray-900/60 px-4 py-3 text-sm text-white placeholder-gray-600 outline-none font-mono transition-all focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20"
               />
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBuyerAddress(connectedEvmAddress)}
+                  disabled={!canAutoFillEvmAddress}
+                  className="rounded-md border border-gray-700 px-2 py-1 text-[10px] font-semibold text-gray-300 transition-colors hover:border-amber-500/40 hover:text-amber-300 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Use Connected Wallet
+                </button>
+                <p className="truncate text-[10px] text-gray-500">
+                  {canAutoFillEvmAddress
+                    ? `EVM: ${connectedEvmAddress.slice(0, 10)}...${connectedEvmAddress.slice(-6)}`
+                    : 'Needs connected wallet to auto-fill EVM address'}
+                </p>
+              </div>
             </div>
           </div>
 

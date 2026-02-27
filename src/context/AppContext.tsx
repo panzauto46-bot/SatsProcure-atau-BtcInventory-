@@ -4,6 +4,7 @@ import { AddressPurpose } from '@midl/core';
 import {
   useAddTxIntention,
   useClearTxIntentions,
+  useEVMAddress,
   useFinalizeBTCTransaction,
   useSendBTCTransactions,
   useSignIntentions,
@@ -47,6 +48,7 @@ interface AppContextType {
   loadInvoicesFromChain: () => Promise<void>;
   contractAddress: string;
   midlExplorerUrl: string;
+  connectedEvmAddress: string;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -97,6 +99,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { signIntentionsAsync } = useSignIntentions();
   const { sendBTCTransactionsAsync } = useSendBTCTransactions();
   const clearTxIntentions = useClearTxIntentions();
+  const connectedEvmAddress = useEVMAddress({ from: wallet.address || undefined });
 
   const contractAddress = SATSPROCURE_CONTRACT.address;
   const midlExplorerUrl = import.meta.env.VITE_BLOCKSCOUT_URL || 'https://blockscout.regtest.midl.xyz';
@@ -287,11 +290,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       throw new Error('Wallet not connected');
     }
 
-    if (!isAddress(data.buyerAddress)) {
+    const rawBuyerAddress = data.buyerAddress.trim();
+    const buyerAddress =
+      !isAddress(rawBuyerAddress) &&
+      rawBuyerAddress === wallet.address &&
+      isAddress(connectedEvmAddress)
+        ? connectedEvmAddress
+        : rawBuyerAddress;
+
+    if (!isAddress(buyerAddress)) {
       addNotification({
         type: 'error',
         title: 'Invalid buyer address',
-        message: 'Buyer address must be a valid EVM address (0x...).',
+        message: 'Buyer address must be EVM format (0x...). Use "Use Connected Wallet" to auto-fill.',
       });
       throw new Error('Invalid buyer address');
     }
@@ -304,7 +315,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const calldata = encodeCreateInvoice(
         invoiceId,
-        data.buyerAddress as `0x${string}`,
+        buyerAddress as `0x${string}`,
         BigInt(totalAmount),
         invoiceNumber
       );
@@ -323,7 +334,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         supplier: wallet.address,
         supplierAddress: wallet.address,
         buyer: data.buyer,
-        buyerAddress: data.buyerAddress,
+        buyerAddress,
         items: data.items,
         totalAmount,
         status: 'pending',
@@ -354,7 +365,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsProcessing(false);
     }
-  }, [addNotification, contractAddress, executeMidlContractCall, t, wallet.address, wallet.connected]);
+  }, [addNotification, connectedEvmAddress, contractAddress, executeMidlContractCall, t, wallet.address, wallet.connected]);
 
   // ============================================================
   // Pay Invoice (On-Chain via Midl + Local State)
@@ -526,6 +537,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         loadInvoicesFromChain,
         contractAddress,
         midlExplorerUrl,
+        connectedEvmAddress,
       }}
     >
       {children}
