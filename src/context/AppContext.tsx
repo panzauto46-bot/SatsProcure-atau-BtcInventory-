@@ -1,13 +1,21 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
+import { useConnect, useDisconnect } from '@midl/react';
+import { AddressPurpose } from '@midl/core';
+import {
+  useAddTxIntention,
+  useClearTxIntentions,
+  useFinalizeBTCTransaction,
+  useSendBTCTransactions,
+  useSignIntentions,
+} from '@midl/executor-react';
 import { v4 as uuidv4 } from 'uuid';
+import { isAddress, zeroAddress } from 'viem';
 import type { Invoice, WalletState, Notification, UserRole, InvoiceItem } from '@/types';
 import { useLanguage } from '@/i18n/LanguageContext';
 import {
   isXverseInstalled,
-  connectXverse,
   getXverseBalance,
   disconnectXverse,
-  sendXverseTransfer,
 } from '@/lib/xverse';
 import { SATSPROCURE_CONTRACT } from '@/lib/contract';
 import {
@@ -30,7 +38,7 @@ interface AppContextType {
     items: InvoiceItem[];
     dueDate: string;
     notes?: string;
-  }) => void;
+  }) => Promise<void>;
   payInvoice: (invoiceId: string, partialAmount?: number) => Promise<void>;
   confirmReceipt: (invoiceId: string) => Promise<void>;
   addNotification: (n: Omit<Notification, 'id' | 'timestamp'>) => void;
@@ -50,6 +58,19 @@ function generateInvoiceNumber(): string {
   return `${prefix}-${year}-${seq}`;
 }
 
+function isConfiguredContractAddress(address: string): boolean {
+  return isAddress(address) && address.toLowerCase() !== zeroAddress;
+}
+
+function getErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : 'Unknown error';
+}
+
+function isUserRejectedError(err: unknown): boolean {
+  const message = getErrorMessage(err).toLowerCase();
+  return message.includes('reject') || message.includes('cancel');
+}
+
 const INITIAL_WALLET: WalletState = {
   connected: false,
   address: '',
@@ -67,8 +88,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const { connectAsync: connectMidlAsync } = useConnect({
+    purposes: [AddressPurpose.Payment, AddressPurpose.Ordinals],
+  });
+  const { disconnectAsync: disconnectMidlAsync } = useDisconnect();
+  const { addTxIntentionAsync } = useAddTxIntention();
+  const { finalizeBTCTransactionAsync } = useFinalizeBTCTransaction();
+  const { signIntentionsAsync } = useSignIntentions();
+  const { sendBTCTransactionsAsync } = useSendBTCTransactions();
+  const clearTxIntentions = useClearTxIntentions();
+
   const contractAddress = SATSPROCURE_CONTRACT.address;
-  const midlExplorerUrl = 'https://blockscout.regtest.midl.xyz';
+  const midlExplorerUrl = import.meta.env.VITE_BLOCKSCOUT_URL || 'https://blockscout.regtest.midl.xyz';
 
   const addNotification = useCallback((n: Omit<Notification, 'id' | 'timestamp'>) => {
     const notification: Notification = {
@@ -90,87 +121,152 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Load Invoices from Chain
   // ============================================================
   const loadInvoicesFromChain = useCallback(async () => {
-    // In production, we would read from the smart contract via wagmi
-    // For the hackathon PoC, invoices are managed locally
-    // with on-chain transactions recording state changes
+    // TODO: Load invoices by reading contract state/events.
   }, []);
 
+  const executeMidlContractCall = useCallback(async (data: `0x${string}`) => {
+    if (!wallet.connected || !wallet.address) {
+      throw new Error('Wallet not connected');
+    }
+    if (!isConfiguredContractAddress(contractAddress)) {
+      throw new Error('Smart contract address is not configured');
+    }
+
+    clearTxIntentions();
+
+    try {
+      await addTxIntentionAsync({
+        reset: true,
+        from: wallet.address,
+        intention: {
+          evmTransaction: {
+            to: contractAddress as `0x${string}`,
+            data,
+            value: 0n,
+          },
+        },
+      });
+
+      const btcTx = await finalizeBTCTransactionAsync({ from: wallet.address });
+      const btcTxId = btcTx.tx.id;
+      const signedTransactions = await signIntentionsAsync({ txId: btcTxId });
+
+      if (signedTransactions.length === 0) {
+        throw new Error('No signed Midl transaction returned');
+      }
+
+      const evmTxHashes = await sendBTCTransactionsAsync({
+        serializedTransactions: signedTransactions,
+        btcTransaction: btcTx.tx.hex,
+      });
+
+      if (evmTxHashes.length === 0) {
+        throw new Error('No EVM transaction hash returned');
+      }
+
+      return {
+        evmTxHash: evmTxHashes[0],
+        btcTxId,
+      };
+    } finally {
+      clearTxIntentions();
+    }
+  }, [
+    addTxIntentionAsync,
+    clearTxIntentions,
+    contractAddress,
+    finalizeBTCTransactionAsync,
+    sendBTCTransactionsAsync,
+    signIntentionsAsync,
+    wallet.address,
+    wallet.connected,
+  ]);
+
   // ============================================================
-  // Connect Wallet (Xverse via Midl)
+  // Connect Wallet (Xverse via Midl Connector)
   // ============================================================
   const connectWallet = useCallback(async () => {
     setIsProcessing(true);
 
-    if (isXverseInstalled()) {
-      try {
-        const result = await connectXverse();
-
-        let balanceSats = 0;
-        try {
-          const bal = await getXverseBalance();
-          balanceSats = bal.total;
-        } catch {
-          // Balance fetch can fail on testnet
-        }
-
-        setWallet({
-          connected: true,
-          address: result.paymentAddress,
-          publicKey: result.paymentPublicKey,
-          balance: balanceSats,
-          network: 'Midl Regtest',
-          mode: 'real',
-        });
-        setIsProcessing(false);
-        addNotification({
-          type: 'success',
-          title: t('walletConnected'),
-          message: `${t('walletConnectedMsg')} ${result.paymentAddress.slice(0, 10)}...${result.paymentAddress.slice(-6)}`,
-        });
-        return;
-      } catch (err: unknown) {
-        setIsProcessing(false);
-        const message = err instanceof Error ? err.message : 'Unknown error';
-        if (message === 'USER_REJECTED') {
-          addNotification({
-            type: 'warning',
-            title: t('connectionCancelled'),
-            message: t('connectionCancelledMsg'),
-          });
-          return;
-        }
-        addNotification({
-          type: 'error',
-          title: t('connectionError'),
-          message: message || t('connectionErrorMsg'),
-        });
-        return;
-      }
-    } else {
-      setIsProcessing(false);
+    if (!isXverseInstalled()) {
       addNotification({
         type: 'error',
         title: 'Xverse Wallet Required',
         message: 'Please install Xverse Wallet extension to use SatsProcure.',
       });
+      setIsProcessing(false);
       window.open('https://www.xverse.app/download', '_blank');
+      return;
     }
-  }, [addNotification, t]);
+
+    try {
+      const accounts = await connectMidlAsync({});
+      const paymentAccount = accounts.find(a => a.purpose === 'payment') ?? accounts[0];
+
+      if (!paymentAccount) {
+        throw new Error('No payment account returned from wallet');
+      }
+
+      let balanceSats = 0;
+      try {
+        const bal = await getXverseBalance();
+        balanceSats = bal.total;
+      } catch {
+        // Balance fetch can fail on regtest; not fatal.
+      }
+
+      setWallet({
+        connected: true,
+        address: paymentAccount.address,
+        publicKey: paymentAccount.publicKey,
+        balance: balanceSats,
+        network: 'Midl Regtest',
+        mode: 'real',
+      });
+
+      addNotification({
+        type: 'success',
+        title: t('walletConnected'),
+        message: `${t('walletConnectedMsg')} ${paymentAccount.address.slice(0, 10)}...${paymentAccount.address.slice(-6)}`,
+      });
+    } catch (err: unknown) {
+      if (isUserRejectedError(err)) {
+        addNotification({
+          type: 'warning',
+          title: t('connectionCancelled'),
+          message: t('connectionCancelledMsg'),
+        });
+      } else {
+        addNotification({
+          type: 'error',
+          title: t('connectionError'),
+          message: getErrorMessage(err) || t('connectionErrorMsg'),
+        });
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [addNotification, connectMidlAsync, t]);
 
   // ============================================================
   // Disconnect Wallet
   // ============================================================
   const disconnectWallet = useCallback(() => {
-    disconnectXverse();
+    void disconnectMidlAsync().catch(() => {
+      // Non-fatal cleanup failure
+    });
+    void disconnectXverse();
+
     setWallet(INITIAL_WALLET);
     setRole(null);
     setInvoices([]);
+
     addNotification({
       type: 'info',
       title: t('walletDisconnected'),
       message: t('walletDisconnectedMsg'),
     });
-  }, [addNotification, t]);
+  }, [addNotification, disconnectMidlAsync, t]);
 
   // ============================================================
   // Create Invoice (On-Chain via Midl + Local State)
@@ -182,93 +278,123 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dueDate: string;
     notes?: string;
   }) => {
+    if (!wallet.connected || !wallet.address) {
+      addNotification({
+        type: 'error',
+        title: 'Wallet not connected',
+        message: 'Please connect your wallet first.',
+      });
+      throw new Error('Wallet not connected');
+    }
+
+    if (!isAddress(data.buyerAddress)) {
+      addNotification({
+        type: 'error',
+        title: 'Invalid buyer address',
+        message: 'Buyer address must be a valid EVM address (0x...).',
+      });
+      throw new Error('Invalid buyer address');
+    }
+
     setIsProcessing(true);
     const totalAmount = data.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
     const invoiceNumber = generateInvoiceNumber();
     const invoiceId = uuidv4();
 
-    let onChainContractAddr: string | undefined;
-
     try {
-      // Encode the Solidity function call via Midl SDK
-      // This generates the calldata for SatsProcure.createInvoice()
-      void encodeCreateInvoice(
+      const calldata = encodeCreateInvoice(
         invoiceId,
         data.buyerAddress as `0x${string}`,
         BigInt(totalAmount),
         invoiceNumber
       );
 
-      onChainContractAddr = contractAddress;
-
       addNotification({
         type: 'info',
         title: 'Midl Contract Call',
-        message: `Creating invoice on-chain: SatsProcure.createInvoice()`,
+        message: 'Broadcasting SatsProcure.createInvoice() to Midl...',
       });
-    } catch (err) {
-      console.warn('Midl contract encoding:', err);
+
+      const { evmTxHash } = await executeMidlContractCall(calldata);
+
+      const invoice: Invoice = {
+        id: invoiceId,
+        invoiceNumber,
+        supplier: wallet.address,
+        supplierAddress: wallet.address,
+        buyer: data.buyer,
+        buyerAddress: data.buyerAddress,
+        items: data.items,
+        totalAmount,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        dueDate: data.dueDate,
+        notes: data.notes,
+        amountPaid: 0,
+        amountReleased: 0,
+        contractAddress,
+        txHash: evmTxHash,
+      };
+
+      setInvoices(prev => [invoice, ...prev]);
+
+      addNotification({
+        type: 'success',
+        title: t('invoiceCreated'),
+        message: `${invoice.invoiceNumber} created on-chain. TX: ${evmTxHash.slice(0, 16)}...`,
+        txHash: evmTxHash,
+      });
+    } catch (err: unknown) {
+      addNotification({
+        type: 'error',
+        title: 'Invoice creation failed',
+        message: getErrorMessage(err),
+      });
+      throw err;
+    } finally {
+      setIsProcessing(false);
     }
-
-    const invoice: Invoice = {
-      id: invoiceId,
-      invoiceNumber,
-      supplier: wallet.address || 'You',
-      supplierAddress: wallet.address,
-      buyer: data.buyer,
-      buyerAddress: data.buyerAddress,
-      items: data.items,
-      totalAmount,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      dueDate: data.dueDate,
-      notes: data.notes,
-      amountPaid: 0,
-      amountReleased: 0,
-      contractAddress: onChainContractAddr,
-    };
-
-    setInvoices(prev => [invoice, ...prev]);
-    setIsProcessing(false);
-    addNotification({
-      type: 'success',
-      title: t('invoiceCreated'),
-      message: `${invoice.invoiceNumber} — ${totalAmount.toLocaleString()} sats | Contract: ${contractAddress.slice(0, 10)}...`,
-    });
-  }, [wallet.address, addNotification, t, contractAddress]);
+  }, [addNotification, contractAddress, executeMidlContractCall, t, wallet.address, wallet.connected]);
 
   // ============================================================
-  // Pay Invoice (BTC via Xverse + On-Chain Record via Midl)
+  // Pay Invoice (On-Chain via Midl + Local State)
   // ============================================================
   const payInvoice = useCallback(async (invoiceId: string, partialAmount?: number) => {
     const invoice = invoices.find(i => i.id === invoiceId);
     if (!invoice) return;
 
-    setIsProcessing(true);
+    if (invoice.status !== 'pending' && invoice.status !== 'partial') {
+      addNotification({
+        type: 'warning',
+        title: 'Invoice not payable',
+        message: 'Only pending or partial invoices can be paid.',
+      });
+      return;
+    }
 
-    const payAmount = partialAmount ?? (invoice.totalAmount - invoice.amountPaid);
+    const remaining = invoice.totalAmount - invoice.amountPaid;
+    const payAmount = partialAmount ?? remaining;
+
+    if (!Number.isFinite(payAmount) || payAmount <= 0 || payAmount > remaining) {
+      addNotification({
+        type: 'error',
+        title: 'Invalid payment amount',
+        message: `Payment must be greater than 0 and not exceed ${remaining.toLocaleString()} sats.`,
+      });
+      return;
+    }
+
+    setIsProcessing(true);
 
     addNotification({
       type: 'info',
       title: t('processingPayment'),
-      message: `Sending ${payAmount.toLocaleString()} sats via Midl SDK → Xverse Wallet...`,
+      message: `Broadcasting SatsProcure.payInvoice(${payAmount.toLocaleString()} sats) ...`,
     });
 
     try {
-      // Step 1: Send real BTC via Xverse
-      const result = await sendXverseTransfer(invoice.supplierAddress, payAmount);
-
-      // Step 2: Record payment on-chain via Midl contract
-      try {
-        void encodePayInvoice(invoiceId, BigInt(payAmount));
-        addNotification({
-          type: 'info',
-          title: 'Midl On-Chain Record',
-          message: `Payment recorded: SatsProcure.payInvoice(${payAmount} sats)`,
-        });
-      } catch (err) {
-        console.warn('Midl contract record:', err);
-      }
+      const calldata = encodePayInvoice(invoiceId, BigInt(payAmount));
+      const { evmTxHash } = await executeMidlContractCall(calldata);
 
       const newAmountPaid = invoice.amountPaid + payAmount;
       const fullyPaid = newAmountPaid >= invoice.totalAmount;
@@ -280,14 +406,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
               ...inv,
               amountPaid: newAmountPaid,
               status: fullyPaid ? 'escrowed' as const : 'partial' as const,
-              txHash: result.txid,
-              contractAddress: contractAddress,
+              txHash: evmTxHash,
+              contractAddress,
             }
             : inv
         )
       );
 
-      // Refresh balance
       try {
         const bal = await getXverseBalance();
         setWallet(prev => ({ ...prev, balance: bal.total }));
@@ -295,34 +420,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Balance refresh can fail
       }
 
-      setIsProcessing(false);
       addNotification({
         type: 'success',
-        title: fullyPaid ? 'Fully Paid — On-Chain Confirmed' : 'Partial Payment Sent',
+        title: fullyPaid ? 'Invoice escrowed' : 'Partial payment recorded',
         message: fullyPaid
-          ? `Invoice fully paid! ${payAmount.toLocaleString()} sats. TX: ${result.txid.slice(0, 16)}...`
-          : `Installment of ${payAmount.toLocaleString()} sats sent. ${(invoice.totalAmount - newAmountPaid).toLocaleString()} sats remaining.`,
-        txHash: result.txid,
+          ? `Invoice fully funded and escrowed. TX: ${evmTxHash.slice(0, 16)}...`
+          : `Installment ${payAmount.toLocaleString()} sats recorded. Remaining ${(invoice.totalAmount - newAmountPaid).toLocaleString()} sats.`,
+        txHash: evmTxHash,
       });
     } catch (err: unknown) {
-      setIsProcessing(false);
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      if (message === 'USER_REJECTED') {
+      if (isUserRejectedError(err)) {
         addNotification({
           type: 'warning',
           title: t('paymentCancelled'),
           message: t('paymentCancelledMsg'),
         });
       } else {
-        console.error('Pay invoice error:', err);
         addNotification({
           type: 'error',
           title: t('paymentFailed'),
-          message: message || t('paymentFailedMsg'),
+          message: getErrorMessage(err) || t('paymentFailedMsg'),
         });
       }
+    } finally {
+      setIsProcessing(false);
     }
-  }, [invoices, addNotification, t, contractAddress]);
+  }, [addNotification, contractAddress, executeMidlContractCall, invoices, t]);
 
   // ============================================================
   // Confirm Receipt (On-Chain via Midl)
@@ -331,40 +454,58 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const invoice = invoices.find(i => i.id === invoiceId);
     if (!invoice) return;
 
+    if (invoice.status !== 'escrowed') {
+      addNotification({
+        type: 'warning',
+        title: 'Invalid invoice state',
+        message: 'Receipt can only be confirmed when invoice is escrowed.',
+      });
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
-      void encodeConfirmReceipt(invoiceId);
+      const calldata = encodeConfirmReceipt(invoiceId);
       addNotification({
         type: 'info',
         title: 'Midl Contract Call',
-        message: `Confirming receipt on-chain: SatsProcure.confirmReceipt()`,
+        message: 'Broadcasting SatsProcure.confirmReceipt() ...',
       });
-    } catch (err) {
-      console.warn('Midl contract encoding:', err);
+
+      const { evmTxHash } = await executeMidlContractCall(calldata);
+
+      setInvoices(prev =>
+        prev.map(inv =>
+          inv.id === invoiceId
+            ? {
+              ...inv,
+              status: 'paid' as const,
+              amountReleased: inv.amountPaid,
+              paidAt: new Date().toISOString(),
+              contractAddress,
+              txHash: evmTxHash,
+            }
+            : inv
+        )
+      );
+
+      addNotification({
+        type: 'success',
+        title: 'Funds Released - On-Chain Confirmed',
+        message: `Receipt confirmed. TX: ${evmTxHash.slice(0, 16)}...`,
+        txHash: evmTxHash,
+      });
+    } catch (err: unknown) {
+      addNotification({
+        type: 'error',
+        title: 'Confirm receipt failed',
+        message: getErrorMessage(err),
+      });
+    } finally {
+      setIsProcessing(false);
     }
-
-    setInvoices(prev =>
-      prev.map(inv =>
-        inv.id === invoiceId
-          ? {
-            ...inv,
-            status: 'paid' as const,
-            amountReleased: inv.amountPaid,
-            paidAt: new Date().toISOString(),
-            contractAddress: contractAddress,
-          }
-          : inv
-      )
-    );
-
-    setIsProcessing(false);
-    addNotification({
-      type: 'success',
-      title: 'Funds Released — On-Chain Confirmed!',
-      message: `Escrow released — supplier received ${invoice.amountPaid.toLocaleString()} sats. Verified on Midl Regtest.`,
-    });
-  }, [invoices, addNotification, contractAddress]);
+  }, [addNotification, contractAddress, executeMidlContractCall, invoices]);
 
   return (
     <AppContext.Provider

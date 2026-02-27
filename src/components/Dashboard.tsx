@@ -8,7 +8,6 @@ import { InvoiceDetailModal } from './InvoiceDetailModal';
 import { PayConfirmModal } from './PayConfirmModal';
 import { Plus, Filter, ArrowLeft, Package, ShoppingCart, Code2, Bitcoin, ExternalLink, Copy } from 'lucide-react';
 import type { Invoice } from '@/types';
-import { SATSPROCURE_CONTRACT } from '@/lib/contract';
 import { getMidlContractUrl } from '@/lib/midlConfig';
 
 export function Dashboard() {

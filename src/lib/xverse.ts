@@ -29,7 +29,7 @@ export async function connectXverse(): Promise<XverseConnectResult> {
   const response = await Wallet.request('wallet_connect', {
     addresses: [AddressPurpose.Payment, AddressPurpose.Ordinals],
     message: 'SatsProcure - B2B Procurement on Bitcoin',
-    network: BitcoinNetworkType.Testnet,
+    network: BitcoinNetworkType.Regtest,
   });
 
   if (response.status === 'success') {

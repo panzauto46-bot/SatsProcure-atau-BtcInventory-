@@ -15,6 +15,7 @@ export function PayConfirmModal({ invoice, isOpen, onClose, onConfirm }: Props) 
   const { t } = useLanguage();
 
   if (!isOpen || !invoice) return null;
+  const remainingAmount = Math.max(invoice.totalAmount - invoice.amountPaid, 0);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -28,7 +29,6 @@ export function PayConfirmModal({ invoice, isOpen, onClose, onConfirm }: Props) 
         </div>
 
         <div className="p-6 space-y-5">
-          {/* Warning */}
           <div className="flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
             <AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-400 mt-0.5" />
             <div>
@@ -39,7 +39,6 @@ export function PayConfirmModal({ invoice, isOpen, onClose, onConfirm }: Props) 
             </div>
           </div>
 
-          {/* Invoice Summary */}
           <div className="rounded-xl border border-gray-800/50 bg-gray-900/40 p-4 space-y-3">
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">{t('invoice')}</span>
@@ -54,15 +53,14 @@ export function PayConfirmModal({ invoice, isOpen, onClose, onConfirm }: Props) 
               <span className="text-gray-300">{invoice.items.length} {t('itemsCount')}</span>
             </div>
             <div className="border-t border-gray-800 pt-3 flex justify-between">
-              <span className="text-sm font-semibold text-gray-400">{t('total')}</span>
+              <span className="text-sm font-semibold text-gray-400">Amount Due</span>
               <div className="text-right">
-                <p className="text-xl font-bold text-amber-400">{invoice.totalAmount.toLocaleString()}</p>
+                <p className="text-xl font-bold text-amber-400">{remainingAmount.toLocaleString()}</p>
                 <p className="text-[10px] text-gray-500">{t('satoshi')}</p>
               </div>
             </div>
           </div>
 
-          {/* Execution details */}
           <div className="rounded-xl border border-gray-800/50 bg-gray-900/40 p-4">
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-500">{t('executionPath')}</p>
             <div className="space-y-2 text-xs">
@@ -75,13 +73,12 @@ export function PayConfirmModal({ invoice, isOpen, onClose, onConfirm }: Props) 
                 <span className="text-gray-400">{t('midlExecute')}</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="h-3.5 w-3.5 rounded-full bg-emerald-400 flex items-center justify-center text-[8px] font-bold text-gray-900">✓</div>
+                <div className="h-3.5 w-3.5 rounded-full bg-emerald-400 flex items-center justify-center text-[8px] font-bold text-gray-900">OK</div>
                 <span className="text-gray-400">{t('onChainConfirm')}</span>
               </div>
             </div>
           </div>
 
-          {/* Buttons */}
           <div className="flex gap-3">
             <button
               onClick={onClose}

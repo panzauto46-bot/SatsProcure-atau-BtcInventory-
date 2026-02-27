@@ -32,6 +32,7 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onPay }: Props) {
     paid: { icon: CheckCircle2, text: t('paidSettled'), cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
     cancelled: { icon: XCircle, text: t('cancelled'), cls: 'bg-red-500/10 text-red-400 border-red-500/20' },
   }[invoice.status] || { icon: Clock, text: invoice.status, cls: 'bg-gray-500/10 text-gray-400 border-gray-500/20' };
+  const remainingAmount = Math.max(invoice.totalAmount - invoice.amountPaid, 0);
 
   const StatusIcon = statusConfig.icon;
 
@@ -39,7 +40,6 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onPay }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-gray-800 bg-gray-950 shadow-2xl">
-        {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-800 bg-gray-950/95 backdrop-blur px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 ring-1 ring-amber-500/20">
@@ -56,7 +56,6 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onPay }: Props) {
         </div>
 
         <div className="p-6 space-y-5">
-          {/* Status */}
           <div className="flex justify-center">
             <span className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold ${statusConfig.cls}`}>
               <StatusIcon className="h-4 w-4" />
@@ -64,7 +63,6 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onPay }: Props) {
             </span>
           </div>
 
-          {/* Parties */}
           <div className="grid grid-cols-2 gap-4">
             <div className="rounded-xl border border-gray-800/50 bg-gray-900/40 p-4">
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">{t('supplierCol')}</p>
@@ -78,7 +76,6 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onPay }: Props) {
             </div>
           </div>
 
-          {/* Items */}
           <div className="rounded-xl border border-gray-800/50 bg-gray-900/40 p-4">
             <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-gray-500">{t('items')}</p>
             <div className="space-y-2">
@@ -86,7 +83,7 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onPay }: Props) {
                 <div key={item.id} className="flex items-center justify-between">
                   <div>
                     <span className="text-sm text-white">{item.name}</span>
-                    <span className="ml-2 text-xs text-gray-500">× {item.quantity}</span>
+                    <span className="ml-2 text-xs text-gray-500">x {item.quantity}</span>
                   </div>
                   <span className="font-mono text-sm text-gray-300">{(item.quantity * item.unitPrice).toLocaleString()} sats</span>
                 </div>
@@ -98,7 +95,6 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onPay }: Props) {
             </div>
           </div>
 
-          {/* Dates */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{t('created')}</p>
@@ -110,7 +106,6 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onPay }: Props) {
             </div>
           </div>
 
-          {/* On-Chain Info */}
           {(invoice.contractAddress || invoice.txHash) && (
             <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4 space-y-3">
               <div className="flex items-center justify-between">
@@ -178,15 +173,14 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onPay }: Props) {
             </div>
           )}
 
-          {/* Pay Button */}
-          {invoice.status === 'pending' && role === 'buyer' && (
+          {(invoice.status === 'pending' || invoice.status === 'partial') && role === 'buyer' && (
             <button
               onClick={() => { onPay(invoice.id); onClose(); }}
               disabled={isProcessing}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-orange-500/25 transition-all hover:shadow-orange-500/40 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
             >
               <CreditCard className="h-4 w-4" />
-              {t('payWithBtc')} — {invoice.totalAmount.toLocaleString()} sats
+              {t('payWithBtc')} - {remainingAmount.toLocaleString()} sats
             </button>
           )}
         </div>

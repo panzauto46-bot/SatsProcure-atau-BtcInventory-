@@ -122,6 +122,7 @@ contract SatsProcure {
     function payInvoice(bytes32 invoiceId, uint256 amount) external {
         Invoice storage inv = invoices[invoiceId];
         require(inv.supplier != address(0), "Invoice not found");
+        require(inv.buyer == msg.sender, "Only buyer can pay");
         require(
             inv.status == InvoiceStatus.Pending || inv.status == InvoiceStatus.Partial,
             "Invoice not payable"
@@ -147,6 +148,7 @@ contract SatsProcure {
     function confirmReceipt(bytes32 invoiceId) external {
         Invoice storage inv = invoices[invoiceId];
         require(inv.supplier != address(0), "Invoice not found");
+        require(inv.buyer == msg.sender, "Only buyer can confirm receipt");
         require(inv.status == InvoiceStatus.Escrowed, "Invoice not escrowed");
 
         inv.status = InvoiceStatus.Paid;

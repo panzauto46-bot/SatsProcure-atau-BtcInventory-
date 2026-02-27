@@ -40,17 +40,21 @@ export function CreateInvoiceModal({ isOpen, onClose }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!buyer || !buyerAddress || !dueDate || items.some(i => !i.name || i.unitPrice <= 0)) return;
+    if (!buyer || !buyerAddress || !dueDate || items.some(i => !i.name || i.unitPrice <= 0 || i.quantity <= 0)) return;
     setIsSubmitting(true);
-    await new Promise(r => setTimeout(r, 1500));
-    createInvoice({ buyer, buyerAddress, items, dueDate, notes: notes || undefined });
-    setIsSubmitting(false);
-    setBuyer('');
-    setBuyerAddress('');
-    setDueDate('');
-    setNotes('');
-    setItems([{ id: uuidv4(), name: '', quantity: 1, unitPrice: 0 }]);
-    onClose();
+    try {
+      await createInvoice({ buyer, buyerAddress, items, dueDate, notes: notes || undefined });
+      setBuyer('');
+      setBuyerAddress('');
+      setDueDate('');
+      setNotes('');
+      setItems([{ id: uuidv4(), name: '', quantity: 1, unitPrice: 0 }]);
+      onClose();
+    } catch {
+      // App notifications already show the concrete error.
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -103,7 +107,8 @@ export function CreateInvoiceModal({ isOpen, onClose }: Props) {
                 type="text"
                 value={buyerAddress}
                 onChange={e => setBuyerAddress(e.target.value)}
-                placeholder="bc1q..."
+                placeholder="0x..."
+                pattern="0x[a-fA-F0-9]{40}"
                 required
                 className="w-full rounded-xl border border-gray-800 bg-gray-900/60 px-4 py-3 text-sm text-white placeholder-gray-600 outline-none font-mono transition-all focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20"
               />
@@ -210,7 +215,7 @@ export function CreateInvoiceModal({ isOpen, onClose }: Props) {
             </div>
             <button
               type="submit"
-              disabled={isSubmitting || !buyer || !buyerAddress || !dueDate || items.some(i => !i.name || i.unitPrice <= 0)}
+              disabled={isSubmitting || !buyer || !buyerAddress || !dueDate || items.some(i => !i.name || i.unitPrice <= 0 || i.quantity <= 0)}
               className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-500/25 transition-all hover:shadow-orange-500/40 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
               {isSubmitting ? (

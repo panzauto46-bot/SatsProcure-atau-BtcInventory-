@@ -9,8 +9,8 @@ export const midlConfig = createConfig({
 
 // Midl Regtest block explorer URLs
 export const MIDL_EXPLORER = {
-    blockscout: "https://blockscout.regtest.midl.xyz",
-    mempool: "https://mempool.regtest.midl.xyz",
+    blockscout: import.meta.env.VITE_BLOCKSCOUT_URL || "https://blockscout.regtest.midl.xyz",
+    mempool: import.meta.env.VITE_MEMPOOL_URL || "https://mempool.regtest.midl.xyz",
 };
 
 // Get the transaction URL on blockscout

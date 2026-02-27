@@ -1,9 +1,17 @@
 // SatsProcure Smart Contract - deployed on Midl Regtest
 // This contract manages invoice lifecycle on-chain
 
+import { isAddress, zeroAddress } from 'viem';
+
+const envAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
+const contractAddress =
+    typeof envAddress === 'string' && isAddress(envAddress)
+        ? envAddress
+        : zeroAddress;
+
 export const SATSPROCURE_CONTRACT = {
-    // Will be updated after deployment
-    address: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+    // Reads from VITE_CONTRACT_ADDRESS, falls back to zeroAddress when invalid/missing.
+    address: contractAddress as `0x${string}`,
 
     abi: [
         // Constructor

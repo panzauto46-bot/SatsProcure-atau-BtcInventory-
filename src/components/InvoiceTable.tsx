@@ -44,13 +44,13 @@ function EscrowProgressBar({ amountPaid, totalAmount }: { amountPaid: number; to
 }
 
 function InvoiceRow({ invoice, onPay, onView, onConfirmReceipt }: { invoice: Invoice; onPay: (id: string) => void; onView: (inv: Invoice) => void; onConfirmReceipt: (id: string) => void }) {
-  const { role, isProcessing } = useApp();
+  const { role, isProcessing, midlExplorerUrl } = useApp();
   const { t, lang } = useLanguage();
   const [expanded, setExpanded] = useState(false);
   const locale = lang === 'id' ? 'id-ID' : 'en-US';
 
   const showPayButton = (invoice.status === 'pending' || invoice.status === 'partial') && role === 'buyer';
-  const showConfirmButton = (invoice.status === 'escrowed' || invoice.status === 'partial') && role === 'buyer';
+  const showConfirmButton = invoice.status === 'escrowed' && role === 'buyer';
 
   return (
     <>
@@ -110,8 +110,9 @@ function InvoiceRow({ invoice, onPay, onView, onConfirmReceipt }: { invoice: Inv
             )}
             {invoice.txHash && (
               <a
-                href="#"
-                onClick={e => e.preventDefault()}
+                href={`${midlExplorerUrl}/tx/${invoice.txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 transition-all hover:bg-emerald-500/20"
                 title={`Tx: ${invoice.txHash}`}
               >
@@ -131,7 +132,7 @@ function InvoiceRow({ invoice, onPay, onView, onConfirmReceipt }: { invoice: Inv
                 <div className="space-y-1.5">
                   {invoice.items.map(item => (
                     <div key={item.id} className="flex justify-between text-xs">
-                      <span className="text-gray-300">{item.name} × {item.quantity}</span>
+                      <span className="text-gray-300">{item.name} x {item.quantity}</span>
                       <span className="font-mono text-gray-400">{(item.quantity * item.unitPrice).toLocaleString()} sats</span>
                     </div>
                   ))}
